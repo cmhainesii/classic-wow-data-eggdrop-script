@@ -132,13 +132,15 @@ def get_realm_status(
     except Exception as e:
         return {"error": str(e)}
 
-def get_item_data(access_token: str, version: str, item_id, region="us") -> str :
+
+def get_item_data(access_token: str, version: str, item_id, region="us", locale="en_US") -> dict :
     version = format_slug(version)
     version_slug = version_to_slug(version)
+    namespace = f"static-{version_slug}-{region}"
     if version_slug == "invalid":
         return f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"
     
-    url = f"https://{region}.api.blizzard.com/data/wow/item/{item_id}?namespace=static-{version_slug}-{region}&locale=en_US"
+    url = f"https://{region}.api.blizzard.com/data/wow/item/{item_id}?namespace={namespace}&locale={locale}"
 
     req = urllib.request.Request(url)
     req.add_header("Authorization", f"Bearer {access_token}")
@@ -146,7 +148,7 @@ def get_item_data(access_token: str, version: str, item_id, region="us") -> str 
     try:
         with urllib.request.urlopen(req) as response:
             resp: HTTPResponse = response
-            data = json.loads(resp.read().decode())
+            data: dict[str, any] = json.loads(resp.read().decode())
 
             name = data.get("name", "Unknown Item")
             level = data.get("level", 0)
@@ -156,12 +158,22 @@ def get_item_data(access_token: str, version: str, item_id, region="us") -> str 
             item_subclass = data.get("item_subclass", {}).get("name", "Unknown Subclass")
             purchase_price = format_with_gold(data.get("purchase_price", 0))
 
-            return(
-                f"Item Name: {name} (ID: {id}) | "
-                f"Level: {level} | Req. Level: {req_level} | "
-                f"Type: {item_class} ({item_subclass}) | "
-                f"Vendor: {purchase_price}"
-            )
+            return {
+                "name": data.get("name", "Unknown Item"),
+                "level": data.get("level", 0),
+                "id": data.get(id, 0),
+                "req_level": data.get("required_level", 0),
+                "item_class": data.get("item_class", {}).get("name", "Unknown Class"),
+                "item_subclass": data.get("item_subclass", {}).get("name", "Unknown Subclass"),
+                "purchase_price": format_with_gold(data.get("purchase_price", 0))
+            }
+
+            # return(
+            #     f"Item Name: {name} (ID: {id}) | "
+            #     f"Level: {level} | Req. Level: {req_level} | "
+            #     f"Type: {item_class} ({item_subclass}) | "
+            #     f"Vendor: {purchase_price}"
+            # )
 
 
     except urllib.error.HTTPError as e:
@@ -169,6 +181,12 @@ def get_item_data(access_token: str, version: str, item_id, region="us") -> str 
             return "Error: Item not found."
         return f"HTTP Error fetching character: {e.code}"
 
+def format_item_data_irc(info: dict[str]):
+    return (
+        f"Item Name: {info.get("name")} (ID: {info.get("id")}) | "
+        f"Level: {info.get("level")} | Req. Level: {req_level} | "
+
+    )
 
 def search_items_name(access_token: str, version: str, item_name, max_results = 5, region="us") -> str:
     query = urllib.parse.quote(item_name)
@@ -467,6 +485,7 @@ def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
         
         token = get_valid_blizzard_token()
         item_data = get_item_data(token, version, int(item_id))
+        
 
 
         putmsg(chan, item_data)
