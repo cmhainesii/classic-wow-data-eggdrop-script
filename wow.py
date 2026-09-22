@@ -242,7 +242,7 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW item data.")
 
-def search_player_info(access_token: str, version: str, realm: str, character: str, region="us") -> str :
+def search_player_info(access_token: str, version: str, realm: str, character: str, region="us") -> dict :
     realm_slug = format_slug(realm)
     version = format_slug(version)
     version_slug = version_to_slug(version)
@@ -273,12 +273,30 @@ def search_player_info(access_token: str, version: str, realm: str, character: s
                 guild_name = data["guild"].get("name")
                 if guild_name:
                     guild_info = f" | Guild: <{guild_name}>"
-            return f"{name} - Lvl {level} {race} {cls} ({realm_name}) | Faction: {faction} | iLvl: {ilvl}{guild_info}"
 
+            return {
+                "name": data.get("name", character.capitalize()),
+                "level": data.get("level", 0),
+                "race": data.get("race", {}).get("name", "Unknown Race"),
+                "class": data.get("character_class", {}).get("name", "Unknown Class"),
+                "realm_name": data.get("realm", {}).get("name", realm_slug.capitalize()),
+                "faction": data.get("faction", {}).get("name", "Unknown Faction"),
+                "ilvl": data.get("equipped_item_level"),
+                "guild": guild_info
+            }
     except urllib.error.HTTPError as e:
         if e.code == 404:
             return f"Character '{character}' on realm '{realm}' nout found."
         return f"HTTP Error fetching character: {e.code}"
+            #return f"{name} - Lvl {level} {race} {cls} ({realm_name}) | Faction: {faction} | iLvl: {ilvl}{guild_info}"
+
+def format_character_info_irc(info: dict) -> str:
+    return f"{info['name']} - Lvl {info['level']} {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
+
+    # except urllib.error.HTTPError as e:
+    #     if e.code == 404:
+    #         return f"Character '{character}' on realm '{realm}' nout found."
+    #     return f"HTTP Error fetching character: {e.code}"
 
 def get_character_equipment(access_token: str, version:str, realm: str, character: str, region="us") -> list[str]:
     realm_slug = format_slug(realm)
@@ -381,12 +399,12 @@ def pubGetPlayerInfo(nick: str, user: str, hand: str, chan: str, text: str,
         version, realm, name = query[0], query[1], query[2]
 
         
-        putlog(f"Character lookup for {name} on {realm}")
+        putlog(f"Character lookup <{nick}> on {chan} - {name} on {realm}")
 
         token = get_valid_blizzard_token()
         character_info = search_player_info(token, version, realm, name)
 
-        putmsg(chan, character_info)
+        putmsg(chan, format_character_info_irc(character_info))
 
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
