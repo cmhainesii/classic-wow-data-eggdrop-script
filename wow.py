@@ -184,24 +184,33 @@ def get_item_data(access_token: str, version: str, item_id, region="us", locale=
 def format_item_data_irc(info: dict[str]):
     return (
         f"Item Name: {info.get("name")} (ID: {info.get("id")}) | "
-        f"Level: {info.get("level")} | Req. Level: {req_level} | "
+        f"Level: {info.get("level")} | Req. Level: {info.get("req_level")} | "
 
     )
 
-def search_items_name(access_token: str, version: str, item_name, max_results = 5, region="us") -> str:
+def search_items_name(
+        access_token: str,
+        version: str,
+        item_name: str,
+        max_results: int = 5,
+        region="us",
+        locale="en_US"
+        ) -> dict:
+    
     query = urllib.parse.quote(item_name)
     version = format_slug(version)
     version_slug = version_to_slug(version)
+    namespace = f"static-{version_slug}-{region}"
     if version_slug == "invalid":
         return f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"
     
 
-    url = f"https://{region}.api.blizzard.com/data/wow/search/item?namespace=static-{version_slug}-{region}&name.en_US={query}&orderby=id&_page=1" 
+    url = f"https://{region}.api.blizzard.com/data/wow/search/item?namespace={namespace}&name.en_US={query}&orderby=id&_page=1&locale={locale}" 
     req = urllib.request.Request(url)
     req.add_header("Authorization", f"Bearer {access_token}")
 
-    result_return = list()
     search_terms = item_name.lower().split()
+    items_found = []
 
     try:
 
@@ -210,7 +219,7 @@ def search_items_name(access_token: str, version: str, item_name, max_results = 
 
             results = json_data.get("results", [])
             if not results:
-                return "No items found."
+                return {"error": "No items found."}
 
             for item in results:
                 data = item.get("data", {})
@@ -219,19 +228,36 @@ def search_items_name(access_token: str, version: str, item_name, max_results = 
 
                 # Client side AND filter
                 if item_id and all(term in title.lower() for term in search_terms):
-                    result_return.append(f"[{item_id}] {title}")
+                    items_found.append({"id": item_id, "name": title})
 
                 # Stop when we collect enough results
-                if len(result_return) >= max_results:
+                if len(items_found) >= max_results:
                     break
                 
 
-            return " | ".join(result_return)
+            #return " | ".join(result_return)
+            return {
+                "query": item_name,
+                "results": items_found
+            }
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return "Error: Item not found."
-        return f"HTTP Error fetching character: {e.code}"
+            return {"error": "Error: Item search endpoint not found."}
+        return {"error": f"HTTP Error fetching character: {e.code}"}
+    except Exception as e:
+        return {"error": str(e)}
 
+
+def format_item_search_irc(data: dict) -> str:
+    if not data or "error" in data:
+        return f"Error: {data.get('error', 'Search failed.')}"
+
+    results = data.get("results", [])
+    if not results:
+        return f"No items found for '{data.get('query', '')}"
+
+    formatted_items = [f"[{item['id']}] {item['name']}" for item in results]
+    return " | ".join(formatted_items)
 
 def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
                    **kwargs):
@@ -253,7 +279,7 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
         token = get_valid_blizzard_token()
         results = search_items_name(token, version, search_query)
 
-        putmsg(chan, results)
+        putmsg(chan, format_item_search_irc(results))
 
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
