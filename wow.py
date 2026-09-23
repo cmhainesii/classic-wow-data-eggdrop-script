@@ -274,7 +274,7 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
         version, search_query = query.split(maxsplit=1)
         
 
-        putlog(f"Item search for: {search_query}")
+        putlog(f"Item search: <{nick}> {chan} - {search_query}")
 
         token = get_valid_blizzard_token()
         results = search_items_name(token, version, search_query)
