@@ -461,7 +461,7 @@ def pubGetPlayerGear(nick: str, user: str, hand: str, chan: str, text: str,
             return
 
         version, realm, name = query[0], query[1], query[2]
-        putlog(f"Gear Lookup for {name} on {realm}")
+        putlog(f"Gear Lookup <{nick}> {chan} - {name}-{realm}")
 
         token = get_valid_blizzard_token()
         equipment = get_character_equipment(token, version, realm, name)
@@ -490,7 +490,7 @@ def pubGetPlayerInfo(nick: str, user: str, hand: str, chan: str, text: str,
         version, realm, name = query[0], query[1], query[2]
 
         
-        putlog(f"Character lookup <{nick}> on {chan} - {name} on {realm}")
+        putlog(f"Character lookup <{nick}> on {chan} - {name}-{realm}")
 
         token = get_valid_blizzard_token()
         character_info = search_player_info(token, version, realm, name)
