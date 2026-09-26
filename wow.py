@@ -2,6 +2,7 @@ from http.client import HTTPResponse
 import json
 import base64
 from pathlib import Path
+from typing import Any
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -138,7 +139,7 @@ def get_item_data(access_token: str, version: str, item_id, region="us", locale=
     version_slug = version_to_slug(version)
     namespace = f"static-{version_slug}-{region}"
     if version_slug == "invalid":
-        return f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"
+        return {"error": f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"}
     
     url = f"https://{region}.api.blizzard.com/data/wow/item/{item_id}?namespace={namespace}&locale={locale}"
 
@@ -148,7 +149,7 @@ def get_item_data(access_token: str, version: str, item_id, region="us", locale=
     try:
         with urllib.request.urlopen(req) as response:
             resp: HTTPResponse = response
-            data: dict[str, any] = json.loads(resp.read().decode())
+            data: dict[str, Any] = json.loads(resp.read().decode())
 
             name = data.get("name", "Unknown Item")
             level = data.get("level", 0)
@@ -178,10 +179,12 @@ def get_item_data(access_token: str, version: str, item_id, region="us", locale=
 
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return "Error: Item not found."
-        return f"HTTP Error fetching character: {e.code}"
+            return {"error": "Error: Item not found."}
+        return {"error": f"HTTP Error fetching character: {e.code}"}
 
-def format_item_data_irc(info: dict[str]):
+def format_item_data_irc(info: dict):
+    if not info or "error" in info:
+        return "Error: Invalid item data."
     return (
         f"Item Name: {info.get("name")} (ID: {info.get("id")}) | "
         f"Level: {info.get("level")} | Req. Level: {info.get("req_level")} | "
@@ -202,7 +205,7 @@ def search_items_name(
     version_slug = version_to_slug(version)
     namespace = f"static-{version_slug}-{region}"
     if version_slug == "invalid":
-        return f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"
+        return {"error": f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"}
     
 
     url = f"https://{region}.api.blizzard.com/data/wow/search/item?namespace={namespace}&name.en_US={query}&orderby=id&_page=1&locale={locale}" 
@@ -286,12 +289,15 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW item data.")
 
+
+
+
 def search_player_info(access_token: str, version: str, realm: str, character: str, region="us") -> dict :
     realm_slug = format_slug(realm)
     version = format_slug(version)
     version_slug = version_to_slug(version)
     if version_slug == "invalid":
-        return "Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"
+        return {"error": "Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"}
     
     char_name = format_slug(character)
 
@@ -311,7 +317,7 @@ def search_player_info(access_token: str, version: str, realm: str, character: s
             faction = data.get("faction", {}).get("name", "Unknown Faction")
             ilvl = data.get("equipped_item_level", 0)
 
-            # Guild is omitted from JSOn if player is unguilded
+            # Guild is omitted from JSON if player is unguilded
             guild_info = ""
             if "guild" in data:
                 guild_name = data["guild"].get("name")
@@ -326,21 +332,62 @@ def search_player_info(access_token: str, version: str, realm: str, character: s
                 "realm_name": data.get("realm", {}).get("name", realm_slug.capitalize()),
                 "faction": data.get("faction", {}).get("name", "Unknown Faction"),
                 "ilvl": data.get("equipped_item_level"),
-                "guild": guild_info
+                "guild": guild_info,
+                "version": version,
             }
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return f"Character '{character}' on realm '{realm}' nout found."
-        return f"HTTP Error fetching character: {e.code}"
-            #return f"{name} - Lvl {level} {race} {cls} ({realm_name}) | Faction: {faction} | iLvl: {ilvl}{guild_info}"
+            return {"error": f"Character '{character}' on realm '{realm}' nout found."}
+        return {"error": f"HTTP Error fetching character: {e.code}"}
+
+    # [TBC] Mogrimxii-Dreamscythe (Lvl 70 Night Elf Hunter | 115.4 iLvl) vs Norfair-Windseeker (Lvl 68 Undead Priest | 98.2 iLvl) | Delta: Mogrimxii +2 Lvl, +17.2 iLvl
+      
+    
+def format_player_compare_summary(player: dict):
+    if not player or "error" in player:
+        return "Error: Invalid player data"
+
+    ver = player.get("version")
+    name = player.get("name")
+    realm = player.get("realm_name")
+    level = player.get("level")
+    race = player.get("race")
+    cls = player.get("class")
+    ilvl = player.get("ilvl")
+
+    return f"{name}-{realm} (Lvl {level} {race} {cls} | {ilvl} iLvl)"
+    #return f"[{player.get("version", "WOW").capitalize()}] {player.get("name")}-{player.get("realm_name", "Unknown").capitalize()} (Lvl {player.get("level", 0)} {player.get("race")} {player.get("class")} | {player.get("ilvl", 0)} iLvl)"      
+
+
+def format_player_compare_irc(player1: dict, player2: dict) -> str:
+    if not player1 or "error" in player1:
+        return "Error: Invalid player1 data."
+    elif not player2 or "error" in player2:
+        return "Error: Invalid player2 data."
+
+    p1_summary = format_player_compare_summary(player1)
+    p2_summary = format_player_compare_summary(player2)
+
+    lvl1 = int(player1.get("level") or 0)
+    lvl2 = int(player2.get("level") or 0)
+    diff_level = lvl1 - lvl2
+
+    ilvl1 = int(player1.get("ilvl") or 0)
+    ilvl2 = int(player2.get("ilvl") or 0)
+    diff_ilvl = ilvl1 - ilvl2
+    
+    version = player1.get("version", "")
+    name = player1.get("name", "Unknown Name")
+    return f"[{version.upper()}] {p1_summary} vs {p2_summary} | Delta: {name} {diff_level:+d} Lvl, {diff_ilvl:+d} iLvl" 
+
 
 def format_character_info_irc(info: dict) -> str:
+    if not info or "error" in info:
+        return "Error: Invalid character data."
+
     return f"{info['name']} - Lvl {info['level']} {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
 
-    # except urllib.error.HTTPError as e:
-    #     if e.code == 404:
-    #         return f"Character '{character}' on realm '{realm}' nout found."
-    #     return f"HTTP Error fetching character: {e.code}"
+    
 
 def get_character_equipment(access_token: str, version:str, realm: str, character: str, region="us") -> list[str]:
     realm_slug = format_slug(realm)
@@ -477,11 +524,44 @@ def pubGetRealmStatus(nick: str, user: str, handle: str, chan: str, text: str,
         info = get_realm_status(token, version, realm)
         queue_str = "Yes" if info['has_queue'] else "No"
         putmsg(chan, f"[{info['realm']}] Status: {info['status']} | Pop: {info['population']} | Queue: {queue_str}")
-
+ 
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching realm status.")
+
+
+def pubComparePlayers(nick: str, user: str, handle: str, chan: str, text: str,
+                      **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+            putmsg(chan, "Usage !compare <era/tbc/mop> <realm> <player1> <player2>")
+            return
+
+        args_split = args.split()
+        if len(args_split) < 4:
+            putmsg(chan, "Usage !compare <era/tbc/mop> <realm> <player1> <player2>")
+            return
+
+        version, realm, player1, player2 = args_split
+        token = get_valid_blizzard_token()
+        
+
+        putlog(f"Player Comparison - <{nick}> on {chan} - {player1} {player2} - {realm}")
+
+        player1_data = search_player_info(token, version, realm, player1)
+        player2_data = search_player_info(token, version, realm, player2)
+
+        #test print data player 1
+        putmsg(chan, format_player_compare_irc(player1_data, player2_data))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching player data.")
+
+
 
 
         
@@ -533,6 +613,7 @@ WOW_BINDS.append(bind("pub", "##wowclassic *", "!search", pubSearchItems))
 WOW_BINDS.append(bind("pub", "##wowclassic *", "!character", pubGetPlayerInfo))
 WOW_BINDS.append(bind("pub", "##wowclassic *", "!gear", pubGetPlayerGear))
 WOW_BINDS.append(bind("pub", "##wowclassic *", "!status", pubGetRealmStatus))
+WOW_BINDS.append(bind("pub", "##wowclassic *", "!compare", pubComparePlayers))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
