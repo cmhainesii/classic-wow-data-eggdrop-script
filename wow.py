@@ -389,7 +389,7 @@ def format_character_info_irc(info: dict) -> str:
 
     
 
-def get_character_equipment(access_token: str, version:str, realm: str, character: str, region="us") -> list[str]:
+def get_character_equipment(access_token: str, version:str, realm: str, character: str, region="us", locale="en_US") -> list[str]:
     realm_slug = format_slug(realm)
     version = format_slug(version)
     version_slug = version_to_slug(version)
@@ -398,7 +398,7 @@ def get_character_equipment(access_token: str, version:str, realm: str, characte
     
 
     character_name = character.lower()
-    url = f"https://{region}.api.blizzard.com/profile/wow/character/{realm_slug}/{character_name}/equipment?namespace=profile-{version_slug}-{region}&locale=en_US"
+    url = f"https://{region}.api.blizzard.com/profile/wow/character/{realm_slug}/{character_name}/equipment?namespace=profile-{version_slug}-{region}&locale={locale}"
     req = urllib.request.Request(url)
     req.add_header("Authorization", f"Bearer {access_token}")
 
