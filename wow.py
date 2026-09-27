@@ -594,7 +594,7 @@ def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
         
 
 
-        putmsg(chan, item_data)
+        putmsg(chan, format_item_data_irc(item_data))
 
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
