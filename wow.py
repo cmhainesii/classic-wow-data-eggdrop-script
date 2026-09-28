@@ -387,64 +387,151 @@ def format_character_info_irc(info: dict) -> str:
 
     return f"{info['name']} - Lvl {info['level']} {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
 
-    
 
-def get_character_equipment(access_token: str, version:str, realm: str, character: str, region="us", locale="en_US") -> list[str]:
+def get_character_equipment(access_token: str, version: str, realm: str, character: str, region="us", locale="en_US") -> dict:
     realm_slug = format_slug(realm)
-    version = format_slug(version)
-    version_slug = version_to_slug(version)
-    if version_slug == "invalid":
-        return [f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"]
+    version_slug = format_slug(version)
+    version_slug = version_to_slug(version_slug)
+    namespace = f"profile-{version_slug}-{region}"
     
-
+    if "invalid" in version_slug:
+        return {"error": "Invalid game version. Must be 'era', 'tbc', or 'mop'."}
+    
     character_name = character.lower()
-    url = f"https://{region}.api.blizzard.com/profile/wow/character/{realm_slug}/{character_name}/equipment?namespace=profile-{version_slug}-{region}&locale={locale}"
+    url = f"https://{region}.api.blizzard.com/profile/wow/character/{realm_slug}/{character_name}/equipment?namespace={namespace}&locale={locale}"
     req = urllib.request.Request(url)
     req.add_header("Authorization", f"Bearer {access_token}")
 
-
     try:
-
         with urllib.request.urlopen(req) as response:
             response: HTTPResponse = response
             data = json.loads(response.read().decode())
-            equip_data = data.get("equipped_items", {})
+            equip_data: list[dict[str, Any]]= data.get("equipped_items", [])
 
             if not equip_data:
-                return ["No equipment data found."]
+                return {"error": "No equipment data found"}
+            
+            equipment = [
+                {
+                    "slot": piece.get("slot", {}).get("name", "Slot"),
+                    "name": piece.get("name", "Unknown Item")
+                }
+                for piece in equip_data
+            ]
 
-            items = []
-            for piece in equip_data:
-                name = piece.get("name", "Unknown Item")
-                slot_name = piece.get("slot", {}).get("name", "Slot")
-                items.append(f"{slot_name}: {name}")
 
-            # Pack items into lines under 350 characters
-            lines = []
-            current_line = []
-            current_len = 0
-            MAX_LEN = 350
-
-            for item in items:
-                # 3 accounts for the " | " separator
-                added_len = len(item) + (3 if current_line else 0)
-                if current_len + added_len > MAX_LEN:
-                    lines.append(" | ".join(current_line))
-                    current_line = [item]
-                    current_len = len(item)
-                else:
-                    current_line.append(item)
-                    current_len += added_len
-
-            if current_line:
-                lines.append(" | ".join(current_line))
-
-            return lines
-
+            return {
+                "character": character,
+                "realm": realm,
+                "version": version,
+                "equipment": equipment
+            }
+        
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return [f"Character '{character}' on realm '{realm}' not found."]
-        return [f"HTTP Error fetching character: {e.code}"]
+            return {"error": f"Character '{character}' on realm '{realm}' not found."}
+        return {"error": f"HTTP Error fetching character: {e.code}"}
+    except Exception as e:
+        return {"error": f"Unexpected error: {str(e)}"}
+    
+
+def format_character_equipment_irc(data: dict) -> list[str]:
+    if not data or "error" in data:
+        return [data.get("error", "Error: Invalid equipment data.")]
+    
+    equipment = data.get("equipment")
+    if not equipment:
+        return ["No equipment items found."]
+    
+    items = [f"{item['slot']}: {item['name']}" for item in equipment]
+
+    # Pack items into lines under 350 characters for IRC buffers
+    lines = []
+    current_line = []
+    current_len = 0
+    MAX_LEN = 350
+
+    for item in items:
+        # 3 accounts for the " | " separator
+        added_len = len(item) + (3 if current_line else 0)
+        if current_len + added_len > MAX_LEN:
+            lines.append(" | ".join(current_line))
+            current_line = [item]
+            current_len = len(item)
+        else:
+            current_line.append(item)
+            current_len += added_len
+
+    if current_line:
+        lines.append(" | ".join(current_line))
+
+    return lines
+
+
+        
+
+    
+
+
+
+    
+
+# def get_character_equipment(access_token: str, version:str, realm: str, character: str, region="us", locale="en_US") -> list[str]:
+#     realm_slug = format_slug(realm)
+#     version = format_slug(version)
+#     version_slug = version_to_slug(version)
+#     if version_slug == "invalid":
+#         return [f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"]
+    
+
+#     character_name = character.lower()
+    
+#     req = urllib.request.Request(url)
+#     req.add_header("Authorization", f"Bearer {access_token}")
+
+
+#     try:
+
+#         with urllib.request.urlopen(req) as response:
+#             response: HTTPResponse = response
+#             data = json.loads(response.read().decode())
+#             equip_data = data.get("equipped_items", {})
+
+#             if not equip_data:
+#                 return ["No equipment data found."]
+
+#             items = []
+#             for piece in equip_data:
+#                 name = piece.get("name", "Unknown Item")
+#                 slot_name = piece.get("slot", {}).get("name", "Slot")
+#                 items.append(f"{slot_name}: {name}")
+
+#             # Pack items into lines under 350 characters
+#             lines = []
+#             current_line = []
+#             current_len = 0
+#             MAX_LEN = 350
+
+#             for item in items:
+#                 # 3 accounts for the " | " separator
+#                 added_len = len(item) + (3 if current_line else 0)
+#                 if current_len + added_len > MAX_LEN:
+#                     lines.append(" | ".join(current_line))
+#                     current_line = [item]
+#                     current_len = len(item)
+#                 else:
+#                     current_line.append(item)
+#                     current_len += added_len
+
+#             if current_line:
+#                 lines.append(" | ".join(current_line))
+
+#             return lines
+
+#     except urllib.error.HTTPError as e:
+#         if e.code == 404:
+#             return [f"Character '{character}' on realm '{realm}' not found."]
+#         return [f"HTTP Error fetching character: {e.code}"]
 
 
 def pubGetPlayerGear(nick: str, user: str, hand: str, chan: str, text: str,
@@ -467,7 +554,7 @@ def pubGetPlayerGear(nick: str, user: str, hand: str, chan: str, text: str,
         equipment = get_character_equipment(token, version, realm, name)
 
 
-        for line in equipment:
+        for line in format_character_equipment_irc(equipment):
             putmsg(chan, line)
 
     except Exception as e:
@@ -587,7 +674,7 @@ def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
             return
 
 
-        putlog(f"Item Lookup <{nick}> on {chan} -  {query} [{version}]")
+        putlog(f"Item Lookup <{nick}> on {chan} -  {item_id} [{version}]")
         
         token = get_valid_blizzard_token()
         item_data = get_item_data(token, version, int(item_id))
@@ -602,18 +689,21 @@ def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
         putmsg(chan, "An error occurred fetching WoW item data.")
 
 
-if 'WOW_BINDS' in globals():
+if 'WOW_BINDS' in globals(): 
     for wbind in WOW_BINDS:
         wbind.unbind()
     del WOW_BINDS
 
+
+TESTING_MASK = "##wowclassic *"
+
 WOW_BINDS = list()
-WOW_BINDS.append(bind("pub", "##wowclassic *", "!item", pubGetItemInfo))
-WOW_BINDS.append(bind("pub", "##wowclassic *", "!search", pubSearchItems))
-WOW_BINDS.append(bind("pub", "##wowclassic *", "!character", pubGetPlayerInfo))
-WOW_BINDS.append(bind("pub", "##wowclassic *", "!gear", pubGetPlayerGear))
-WOW_BINDS.append(bind("pub", "##wowclassic *", "!status", pubGetRealmStatus))
-WOW_BINDS.append(bind("pub", "##wowclassic *", "!compare", pubComparePlayers))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!item", pubGetItemInfo))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!search", pubSearchItems))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!character", pubGetPlayerInfo))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!gear", pubGetPlayerGear))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!status", pubGetRealmStatus))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!compare", pubComparePlayers))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
