@@ -366,7 +366,7 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
 
         
 
-def search_player_info(access_token: str, version: str, realm: str, character: str, region="us", locale="en_US") -> dict :
+def get_character_data(access_token: str, version: str, realm: str, character: str, region="us", locale="en_US") -> dict :
     realm_slug = format_slug(realm)
     version = format_slug(version)
     version_slug = version_to_slug(version)
@@ -408,11 +408,11 @@ def search_player_info(access_token: str, version: str, realm: str, character: s
                 "faction": data.get("faction", {}).get("name", "Unknown Faction"),
                 "ilvl": data.get("equipped_item_level"),
                 "guild": guild_info,
-                "version": version,
+                "version": version
             }
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return {"error": f"Character '{character}' on realm '{realm}' nout found."}
+            return {"error": f"Character '{character}' on realm '{realm}' not found."}
         return {"error": f"HTTP Error fetching character: {e.code}"}
 
     # [TBC] Mogrimxii-Dreamscythe (Lvl 70 Night Elf Hunter | 115.4 iLvl) vs Norfair-Windseeker (Lvl 68 Undead Priest | 98.2 iLvl) | Delta: Mogrimxii +2 Lvl, +17.2 iLvl
@@ -422,7 +422,7 @@ def format_player_compare_summary(player: dict):
     if not player or "error" in player:
         return "Error: Invalid player data"
 
-    ver = player.get("version")
+    
     name = player.get("name")
     realm = player.get("realm_name")
     level = player.get("level")
@@ -430,7 +430,7 @@ def format_player_compare_summary(player: dict):
     cls = player.get("class")
     ilvl = player.get("ilvl")
 
-    return f"{name}-{realm} (Lvl {level} {race} {cls} | {ilvl} iLvl)"
+    return f"[{name}-{realm} (Lvl {level} {race} {cls} | {ilvl} iLvl)"
     #return f"[{player.get("version", "WOW").capitalize()}] {player.get("name")}-{player.get("realm_name", "Unknown").capitalize()} (Lvl {player.get("level", 0)} {player.get("race")} {player.get("class")} | {player.get("ilvl", 0)} iLvl)"      
 
 
@@ -637,7 +637,7 @@ def pubGetPlayerGear(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW item data")
 
-def pubGetPlayerInfo(nick: str, user: str, hand: str, chan: str, text: str,
+def pubCharacterInfo(nick: str, user: str, hand: str, chan: str, text: str,
                      **kwargs):
     try:
         query = text.strip()
@@ -655,9 +655,9 @@ def pubGetPlayerInfo(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(f"Character lookup <{nick}> on {chan} - {name}-{realm}")
 
         token = get_valid_blizzard_token()
-        character_info = search_player_info(token, version, realm, name)
+        character_info = get_character_data(token, version, realm, name)
 
-        putmsg(chan, format_character_info_irc(character_info))
+        putmsg(chan, f"[{version.upper()}] {format_character_info_irc(character_info)}")
 
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
@@ -712,8 +712,8 @@ def pubComparePlayers(nick: str, user: str, handle: str, chan: str, text: str,
 
         putlog(f"Player Comparison - <{nick}> on {chan} - {player1} {player2} - {realm}")
 
-        player1_data = search_player_info(token, version, realm, player1)
-        player2_data = search_player_info(token, version, realm, player2)
+        player1_data = get_character_data(token, version, realm, player1)
+        player2_data = get_character_data(token, version, realm, player2)
 
         #test print data player 1
         putmsg(chan, format_player_compare_irc(player1_data, player2_data))
@@ -798,7 +798,7 @@ TESTING_MASK = "##wowclassic *"
 WOW_BINDS = list()
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!item", pubGetItemInfo))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!search", pubSearchItems))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!character", pubGetPlayerInfo))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!character", pubCharacterInfo))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!gear", pubGetPlayerGear))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!status", pubGetRealmStatus))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!compare", pubComparePlayers))
