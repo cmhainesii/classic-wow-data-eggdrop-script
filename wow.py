@@ -391,6 +391,7 @@ def get_character_data(access_token: str, version: str, realm: str, character: s
             realm_name = data.get("realm", {}).get("name", realm.capitalize())
             faction = data.get("faction", {}).get("name", "Unknown Faction")
             ilvl = data.get("equipped_item_level", 0)
+            gender = data.get("gender", {}).get("name", "Unknown Gender")
 
             # Guild is omitted from JSON if player is unguilded
             guild_info = ""
@@ -400,13 +401,14 @@ def get_character_data(access_token: str, version: str, realm: str, character: s
                     guild_info = f" | Guild: <{guild_name}>"
 
             return {
-                "name": data.get("name", character.capitalize()),
-                "level": data.get("level", 0),
-                "race": data.get("race", {}).get("name", "Unknown Race"),
-                "class": data.get("character_class", {}).get("name", "Unknown Class"),
-                "realm_name": data.get("realm", {}).get("name", realm_slug.capitalize()),
-                "faction": data.get("faction", {}).get("name", "Unknown Faction"),
-                "ilvl": data.get("equipped_item_level"),
+                "name": name,
+                "level": level,
+                "race": race,
+                "class": cls,
+                "realm_name": realm_name,
+                "faction": faction,
+                "ilvl": ilvl,
+                "gender": gender,
                 "guild": guild_info,
                 "version": version
             }
@@ -424,13 +426,14 @@ def format_player_compare_summary(player: dict):
 
     
     name = player.get("name")
+    gender = player.get("gender")
     realm = player.get("realm_name")
     level = player.get("level")
     race = player.get("race")
     cls = player.get("class")
     ilvl = player.get("ilvl")
 
-    return f"[{name}-{realm} (Lvl {level} {race} {cls} | {ilvl} iLvl)"
+    return f"{name}-{realm} (Lvl {level} {race} {cls} | {ilvl} iLvl) ({gender})"
     #return f"[{player.get("version", "WOW").capitalize()}] {player.get("name")}-{player.get("realm_name", "Unknown").capitalize()} (Lvl {player.get("level", 0)} {player.get("race")} {player.get("class")} | {player.get("ilvl", 0)} iLvl)"      
 
 
@@ -460,7 +463,7 @@ def format_character_info_irc(info: dict) -> str:
     if not info or "error" in info:
         return "Error: Invalid character data."
 
-    return f"{info['name']} - Lvl {info['level']} {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
+    return f"{info['name']} ({info['gender']})- Lvl {info['level']} {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
 
 
 def get_character_equipment(access_token: str, version: str, realm: str, character: str, region="us", locale="en_US") -> dict:
