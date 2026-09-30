@@ -14,13 +14,11 @@ from dotenv import load_dotenv
 from eggdrop import bind
 from eggdrop.tcl import putmsg, putlog
 
-# API Credentials
-#CLIENT_ID = "6d90fc49d9bf4ddea058e3a428036577"
-#CLIENT_SECRET = "tX7yyYMTut6BkYjkjL53eEwJaRaB21UN"
 
 load_dotenv()
 CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID")
 CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET")
+
 
 _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
 
