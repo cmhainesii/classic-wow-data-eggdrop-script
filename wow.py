@@ -133,11 +133,12 @@ def get_realm_status(
 
 
 # Gets characters effective stats
-def get_chararacter_base_estats(
+def get_chararacter_base_stats(
         access_token: str,
         version: str,
         realm: str,
         character: str,
+        effective=True,
         region="us",
         locale="en_US"
         ) -> dict:
@@ -146,6 +147,7 @@ def get_chararacter_base_estats(
     version_slug = format_slug(version)
     version_slug = version_to_slug(version_slug)
     character_slug = format_slug(character)
+    category = "effective" if effective else "base"
 
     if not version_slug or "invalid" in version_slug:
         return {"error": "Invalid game version. Must be 'era', 'tbc', or 'mop'."}
@@ -164,12 +166,12 @@ def get_chararacter_base_estats(
             name = character_slug.capitalize()
             realm_formatted = realm_slug.capitalize()
             version_formatted = format_slug(version).upper()
-            strength = data.get("strength", {}).get("effective", 0)
-            agility = data.get("agility", {}).get("effective", 0)
-            stamina = data.get("stamina", {}).get("effective", 0)
-            intellect = data.get("intellect", {}).get("effective", 0)
-            spirit = data.get("spirit", {}).get("effective", 0)
-            armor = data.get("armor", {}).get("effective", 0)
+            strength = data.get("strength", {}).get(category, 0)
+            agility = data.get("agility", {}).get(category, 0)
+            stamina = data.get("stamina", {}).get(category, 0)
+            intellect = data.get("intellect", {}).get(category, 0)
+            spirit = data.get("spirit", {}).get(category, 0)
+            armor = data.get("armor", {}).get(category, 0)
 
             return {
                 "name": name,
@@ -180,7 +182,8 @@ def get_chararacter_base_estats(
                 "stamina": stamina,
                 "intellect": intellect,
                 "spirit": spirit,
-                "armor": armor
+                "armor": armor,
+                "effective": effective
             }
 
     except urllib.error.HTTPError as e:
@@ -196,12 +199,8 @@ def format_base_stats_irc(data: dict) -> str:
     if not data or "error" in data:
         return "Error: Invalid data."
 
-    return f"[{data['version']}] - {data['name']}-{data['realm']} Stats: Str: {data['strength']} | Agi: {data['agility']} | Sta: {data['stamina']} | Int: {data['intellect']} Spt: {data['spirit']} Arm: {data['armor']}"
-
-    
-
-
-    
+    prefix = "" if data.get("effective") else " Base"
+    return f"[{data['version']}] - {data['name']}-{data['realm']}{prefix} Stats: Str: {data['strength']} | Agi: {data['agility']} | Sta: {data['stamina']} | Int: {data['intellect']} | Spt: {data['spirit']} | Arm: {data['armor']}"
 
 
 def get_item_data(access_token: str, version: str, item_id, region="us", locale="en_US") -> dict :
@@ -543,73 +542,6 @@ def format_character_equipment_irc(data: dict) -> list[str]:
 
     return lines
 
-
-        
-
-    
-
-
-
-    
-
-# def get_character_equipment(access_token: str, version:str, realm: str, character: str, region="us", locale="en_US") -> list[str]:
-#     realm_slug = format_slug(realm)
-#     version = format_slug(version)
-#     version_slug = version_to_slug(version)
-#     if version_slug == "invalid":
-#         return [f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"]
-    
-
-#     character_name = character.lower()
-    
-#     req = urllib.request.Request(url)
-#     req.add_header("Authorization", f"Bearer {access_token}")
-
-
-#     try:
-
-#         with urllib.request.urlopen(req) as response:
-#             response: HTTPResponse = response
-#             data = json.loads(response.read().decode())
-#             equip_data = data.get("equipped_items", {})
-
-#             if not equip_data:
-#                 return ["No equipment data found."]
-
-#             items = []
-#             for piece in equip_data:
-#                 name = piece.get("name", "Unknown Item")
-#                 slot_name = piece.get("slot", {}).get("name", "Slot")
-#                 items.append(f"{slot_name}: {name}")
-
-#             # Pack items into lines under 350 characters
-#             lines = []
-#             current_line = []
-#             current_len = 0
-#             MAX_LEN = 350
-
-#             for item in items:
-#                 # 3 accounts for the " | " separator
-#                 added_len = len(item) + (3 if current_line else 0)
-#                 if current_len + added_len > MAX_LEN:
-#                     lines.append(" | ".join(current_line))
-#                     current_line = [item]
-#                     current_len = len(item)
-#                 else:
-#                     current_line.append(item)
-#                     current_len += added_len
-
-#             if current_line:
-#                 lines.append(" | ".join(current_line))
-
-#             return lines
-
-#     except urllib.error.HTTPError as e:
-#         if e.code == 404:
-#             return [f"Character '{character}' on realm '{realm}' not found."]
-#         return [f"HTTP Error fetching character: {e.code}"]
-
-
 def pubGetPlayerGear(nick: str, user: str, hand: str, chan: str, text: str,
                      **kwargs):
     try:
@@ -725,7 +657,7 @@ def pubComparePlayers(nick: str, user: str, handle: str, chan: str, text: str,
         putmsg(chan, "An error occurred fetching player data.")
 
 
-def pubCharacterStats(nick: str, user: str, hand: str, chan: str, text: str,
+def pubCharacterEStats(nick: str, user: str, hand: str, chan: str, text: str,
                       **kwargs):
     try:
         args = text.strip()
@@ -743,7 +675,32 @@ def pubCharacterStats(nick: str, user: str, hand: str, chan: str, text: str,
 
         putlog(f"Fetch Player Stats - <{nick}> on {chan} - {character} [{version}]")
 
-        stats = get_chararacter_base_estats(token, version, realm, character)
+        stats = get_chararacter_base_stats(token, version, realm, character)
+        putmsg(chan, format_base_stats_irc(stats))
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching player statistics.")
+
+def pubCharacterBStats(nick: str, user: str, hand: str, chan: str, text: str,
+                      **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+            putmsg(chan, "Usage !stats <era/tbc/mop> <realm> <character>")
+            return
+
+        args_split = args.split()
+        if len(args_split) < 3:
+            putmsg(chan, "Usage !stats <era/tbc/mop> <realm> <character>")
+            return
+
+        version, realm, character = args_split
+        token = get_valid_blizzard_token()
+
+        putlog(f"Fetch Player Stats - <{nick}> on {chan} - {character} [{version}]")
+
+        stats = get_chararacter_base_stats(token, version, realm, character, False)
         putmsg(chan, format_base_stats_irc(stats))
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
@@ -803,7 +760,8 @@ WOW_BINDS.append(bind("pub", TESTING_MASK, "!character", pubCharacterInfo))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!gear", pubGetPlayerGear))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!status", pubGetRealmStatus))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!compare", pubComparePlayers))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!stats", pubCharacterStats))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!stats", pubCharacterEStats))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!bstats", pubCharacterBStats))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
