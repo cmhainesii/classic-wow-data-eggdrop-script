@@ -265,6 +265,56 @@ def get_chararacter_base_stats(
         return {"error": str(e)}
 
 
+def get_character_data(access_token: str, version: str, realm: str, character: str, region="us", locale="en_US") -> dict :
+    realm_slug = format_slug(realm)
+    version = format_slug(version)
+    version_slug = version_to_slug(version)
+    if version_slug == "invalid":
+        return {"error": "Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"}
+    
+    char_name = format_slug(character)
+    namespace = f"profile-{version_slug}-{region}"
+
+    url = f"https://{region}.api.blizzard.com/profile/wow/character/{realm_slug}/{char_name}?namespace={namespace}&locale={locale}"
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            data =json.loads(response.read().decode())
+
+            name = data.get("name", character.capitalize())
+            level = data.get("level", 0)
+            race = data.get("race", {}).get("name", "Unknown Race")
+            cls = data.get("character_class", {}).get("name", "Unknown Class")
+            realm_name = data.get("realm", {}).get("name", realm.capitalize())
+            faction = data.get("faction", {}).get("name", "Unknown Faction")
+            ilvl = data.get("equipped_item_level", 0)
+            gender = data.get("gender", {}).get("name", "Unknown Gender")
+
+            # Guild is omitted from JSON if player is unguilded
+            guild_info = ""
+            if "guild" in data:
+                guild_name = data["guild"].get("name")
+                if guild_name:
+                    guild_info = f" | Guild: <{guild_name}>"
+
+            return {
+                "name": name,
+                "level": level,
+                "race": race,
+                "class": cls,
+                "realm_name": realm_name,
+                "faction": faction,
+                "ilvl": ilvl,
+                "gender": gender,
+                "guild": guild_info,
+                "version": version
+            }
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error": f"Character '{character}' on realm '{realm}' not found."}
+        return {"error": f"HTTP Error fetching character: {e.code}"}
 
 
 
@@ -566,6 +616,7 @@ def pubCharacterInfo(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW item data.")
+
 
 def pubGetRealmStatus(nick: str, user: str, handle: str, chan: str, text: str,
                       **kwargs):
