@@ -2,6 +2,7 @@ from http.client import HTTPResponse
 import json
 import base64
 from pathlib import Path
+import trace
 from typing import Any
 import urllib.error
 import urllib.parse
@@ -711,6 +712,17 @@ def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW item data.")
 
+def pubTokenDebug(nick: str, user: str, hand: str, chan: str, text: str,
+                  **kwargs):
+    try:
+        putmsg(nick, f"Token: {get_valid_blizzard_token()}")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error has occurred.")
+        
+        
 
 if 'WOW_BINDS' in globals(): 
     for wbind in WOW_BINDS:
@@ -729,6 +741,7 @@ WOW_BINDS.append(bind("pub", TESTING_MASK, "!status", pubGetRealmStatus))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!compare", pubComparePlayers))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!stats", pubCharacterEStats))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!bstats", pubCharacterBStats))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!token", pubTokenDebug))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
