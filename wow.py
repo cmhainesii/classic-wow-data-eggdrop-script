@@ -12,6 +12,7 @@ import time
 import os
 from dotenv import load_dotenv
 
+
 from eggdrop import bind
 from eggdrop.tcl import putmsg, putlog
 
@@ -144,6 +145,9 @@ def get_realm_status(access_token:str, version: str,realm: str,
         return {"error": str(e)}
 
 
+
+    
+
 def search_items_name(
         access_token: str,
         version: str,
@@ -263,6 +267,60 @@ def get_chararacter_base_stats(
         return {"error": "HTTP Error fetching character statistics."}
     except Exception as e:
         return {"error": str(e)}
+
+def get_reputation_data(access_token: str, version: str, realm: str, character: str, region="us", locale="en_US") -> dict:
+    realm_slug = format_slug(realm)
+    version_slug = format_slug(version)
+    version_slug = version_to_slug(version_slug)
+    if "invalid" in version_slug:
+        return {"error": "Invalid game version"}
+    character_slug = format_slug(character)
+    namespace = f"profile-{version_slug}-{region}"
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Pull the character summary, which contains the URL of the API endpoint that stores the character's reputation data
+    #url = f"https://{region}.api.blizzard.com/profile/wow/character/{realm_slug}/{character_slug}?namespace={namespace}&locale={locale}"
+    url = f"https://{region}.api.blizzard.com/profile/wow/character/{realm_slug}/{character_slug}/reputations?namespace={namespace}&locale={locale}"
+    req = urllib.request.Request(url, headers=headers)
+    
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            response: HTTPResponse = response
+            data: dict[str, Any] = json.loads(response.read().decode())
+            rep_data = data.get("reputations", {})
+            if not rep_data:
+                return {"error": f"No reputation data for {character} found"}
+            
+            parsed_factions = []
+            for item in rep_data:
+                faction_name = item.get("faction",{}).get("name", "Unknown")
+                standing_info = item.get("standing", {})
+                standing_name = standing_info.get("name", "Unknown")
+                value = standing_info.get("value", 0)
+                max = standing_info.get("max", 0)
+                percent = round((value / max) * 100, 1) if max > 0 else 100.0
+
+                parsed_factions.append({
+                    "faction": faction_name,
+                    "standing": standing_name,
+                    "value": value,
+                    "max": max,
+                    "percent": percent
+                })
+
+
+            return {
+                "character": data.get("character", {}).get("name", "Unknown Name"),
+                "realm": data.get("character", {}).get("realm", {}).get("name", "Unknown Realm"),
+                "version": format_slug(version),
+                "reputations": parsed_factions
+            }
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error": f"Character not found"}
+        return {"error": f"Http error fetching reputation data"}
+            
 
 
 def get_character_data(access_token: str, version: str, realm: str, character: str, region="us", locale="en_US") -> dict :
@@ -451,33 +509,6 @@ def format_item_search_irc(data: dict) -> str:
     formatted_items = [f"[{item['id']}] {item['name']}" for item in results]
     return " | ".join(formatted_items)
 
-def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
-                   **kwargs):
-    try:
-        query = text.strip()
-        if not query:
-            putmsg(chan, "Usage !search <era/tbc/mop> <item name>")
-            return
-
-        if len(query.split()) < 2:
-            putmsg(chan, "Usage !search <era/tbc/mop> <item name>")
-            return
-
-        version, search_query = query.split(maxsplit=1)
-        
-
-        putlog(f"Item search: <{nick}> {chan} - {search_query} [{version}]")
-
-        token = get_valid_blizzard_token()
-        results = search_items_name(token, version, search_query)
-
-        putmsg(chan, format_item_search_irc(results))
-
-    except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
-        putlog(traceback.format_exc())
-        putmsg(chan, "An error occurred fetching WoW item data.")
-
     
 def format_player_compare_summary(player: dict):
     if not player or "error" in player:
@@ -554,6 +585,30 @@ def format_character_equipment_irc(data: dict) -> list[str]:
         lines.append(" | ".join(current_line))
 
     return lines
+
+
+def format_reputation_irc(data: dict, search_faction: str) -> list[str]:
+    if "error" in data:
+        return [data["error"]]
+
+    search_term = search_faction.lower().strip()
+    reputations = data.get("reputations", [])
+
+    # Find matches using substring matching
+    matches = [
+        rep for rep in reputations
+        if search_term in rep["faction"].lower()
+    ]
+
+    if not matches:
+        return [f"No reputation found matching '{search_faction}' for {data['character']}."]
+
+    match = matches[0]
+    header = header = f"[{data['version'].upper()}] {data['character'].title()}-{data['realm'].title()}"
+
+    return [
+        f"{header} | {match['faction']}: {match['standing']} ({match['value']:,}/{match['max']:,} - {match['percent']}%)"
+    ]
 
 
 """
@@ -726,7 +781,36 @@ def pubCharacterBStats(nick: str, user: str, hand: str, chan: str, text: str,
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
-        putmsg(chan, "An error occurred fetching player statistics.")        
+        putmsg(chan, "An error occurred fetching player statistics.")     
+
+
+def pubGetReputation(nick:str, user: str, hand: str, chan: str, text: str,
+                     **kwargs):
+    try:
+        query = text.strip()
+
+        if not query or len(query.split()) < 4:
+            putmsg(chan, "Usage: !rep <tbc/era/mop> <realm> <character> <faction>")
+            return
+
+        version, realm, character, faction = query.split()
+        token = get_valid_blizzard_token()
+
+        putlog(f"Fetch reputation data - <{nick}> on {chan} - {character} - {faction} [{version.upper()}]")
+
+        data = get_reputation_data(token, version, realm, character)
+        if not data:
+            putmsg(chan, "Sorry no reputation data was found...")
+            return
+
+        putmsg(chan, format_reputation_irc(data, faction))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching reputation data.")
+
+
 
 
 def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
@@ -763,6 +847,34 @@ def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW item data.")
 
+
+def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
+                   **kwargs):
+    try:
+        query = text.strip()
+        if not query:
+            putmsg(chan, "Usage !search <era/tbc/mop> <item name>")
+            return
+
+        if len(query.split()) < 2:
+            putmsg(chan, "Usage !search <era/tbc/mop> <item name>")
+            return
+
+        version, search_query = query.split(maxsplit=1)
+        
+
+        putlog(f"Item search: <{nick}> {chan} - {search_query} [{version}]")
+
+        token = get_valid_blizzard_token()
+        results = search_items_name(token, version, search_query)
+
+        putmsg(chan, format_item_search_irc(results))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching WoW item data.")
+
 def pubTokenDebug(nick: str, user: str, hand: str, chan: str, text: str,
                   **kwargs):
     try:
@@ -793,6 +905,7 @@ WOW_BINDS.append(bind("pub", TESTING_MASK, "!compare", pubComparePlayers))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!stats", pubCharacterEStats))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!bstats", pubCharacterBStats))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!token", pubTokenDebug))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!rep", pubGetReputation))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
