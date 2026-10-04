@@ -161,9 +161,15 @@ def search_creatures(access_token: str, version: str, creature: str, max_results
     req = urllib.request.Request(url)
     req.add_header("Authorization", f"Bearer {access_token}")
 
-    
 
 
+    search_terms = creature.lower().split()
+    items_found = []
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            response: HTTPResponse = response
+            data = json.loads(response.read().decode())
     
 
 def search_items_name(access_token: str, version: str, item_name: str, max_results: int = 5,
