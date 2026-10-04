@@ -10,16 +10,19 @@ import urllib.request
 import traceback
 import time
 import os
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 
 from eggdrop import bind
 from eggdrop.tcl import putmsg, putlog
 
+### YOU MUST CONFIGURE YOUR API CLIENT & SECRET KEYS OR THE BOT WILL NOT WORK! ###
+MY_CLIENT_ID = "YOUR_CLIENT_ID_HERE"
+MY_SECRET = "YOUR_SECRET_KEY_HERE"
 
-load_dotenv()
-CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID")
-CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET")
+#load_dotenv()
+CLIENT_ID = os.environ.get("BLIZZARD_CLIENT_ID", MY_CLIENT_ID)
+CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET", MY_SECRET)
 
 
 _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
@@ -145,6 +148,21 @@ def get_realm_status(access_token:str, version: str,realm: str,
         return {"error": str(e)}
 
 
+def search_creatures(access_token: str, version: str, creature: str, max_results=10,
+                     region="us", locale="en_US") -> dict:
+
+    query = urllib.parse.quote(creature)
+    version_slug = version_to_slug(format_slug(version))
+    namespace = f"static-{version_slug}-{region}"
+    if version_slug == "invalid":
+        return {"error": "Invalid game version. Must be 'era', 'tbc', or 'mop'"}
+
+    url = f"https://{region}.api.blizzard.com/data/wow/search/creature?namespace={namespace}&name.{locale}&orderby=id&_page=1&locale={locale}"
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    
+
 
     
 
@@ -178,7 +196,7 @@ def search_items_name(access_token: str, version: str, item_name: str, max_resul
             for item in results:
                 data = item.get("data", {})
                 item_id = data.get("id")
-                title = data.get("name", {}).get("en_US", "Unknown Item")
+                title = data.get("name", {}).get(locale, "Unknown Item")
 
                 # Client side AND filter
                 if item_id and all(term in title.lower() for term in search_terms):
@@ -317,7 +335,9 @@ def get_reputation_data(access_token: str, version: str, realm: str, character: 
             
 
 
-def get_character_data(access_token: str, version: str, realm: str, character: str, region="us", locale="en_US") -> dict :
+def get_character_data(access_token: str, version: str, realm: str, character: str,
+                       region="us", locale="en_US") -> dict :
+    
     realm_slug = format_slug(realm)
     version = format_slug(version)
     version_slug = version_to_slug(version)
