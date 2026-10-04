@@ -148,14 +148,8 @@ def get_realm_status(access_token:str, version: str,realm: str,
 
     
 
-def search_items_name(
-        access_token: str,
-        version: str,
-        item_name: str,
-        max_results: int = 5,
-        region="us",
-        locale="en_US"
-        ) -> dict:
+def search_items_name(access_token: str, version: str, item_name: str, max_results: int = 5,
+        region="us", locale="en_US") -> dict:
     
     query = urllib.parse.quote(item_name)
     version = format_slug(version)
