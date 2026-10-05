@@ -11,15 +11,21 @@ import traceback
 import time
 import os
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 from eggdrop import bind
 from eggdrop.tcl import putmsg, putlog
 
+load_dotenv()
 ### YOU MUST CONFIGURE YOUR API CLIENT &SECRET KEYS OR THE SCRIPT WILL NOT WORK!
 MY_CLIENT_ID = "YOUR_CLIENT_ID_HERE"
 MY_SECRET = "YOUR_SECRET_KEY_HERE"
-CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID", )
-CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET")
+CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID", MY_CLIENT_ID )
+CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET", MY_SECRET)
 
 
 
@@ -162,7 +168,7 @@ def search_creatures(access_token: str, version: str, creature: str, max_results
     if version_slug == "invalid":
         return {"error": "Invalid game version. Must be 'era', 'tbc', or 'mop'"}
 
-    url = f"https://{region}.api.blizzard.com/data/wow/search/creature?namespace={namespace}&name.{locale}&orderby=id&_page=1&locale={locale}"
+    url = f"https://{region}.api.blizzard.com/data/wow/search/creature?namespace={namespace}&name.{locale}={query}&orderby=id&_page=1&locale={locale}"
     req = urllib.request.Request(url)
     req.add_header("Authorization", f"Bearer {access_token}")
 
