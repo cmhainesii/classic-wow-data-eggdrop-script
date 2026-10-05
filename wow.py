@@ -10,23 +10,28 @@ import urllib.request
 import traceback
 import time
 import os
-#from dotenv import load_dotenv
 
 
 from eggdrop import bind
 from eggdrop.tcl import putmsg, putlog
 
-### YOU MUST CONFIGURE YOUR API CLIENT & SECRET KEYS OR THE BOT WILL NOT WORK! ###
+### YOU MUST CONFIGURE YOUR API CLIENT &SECRET KEYS OR THE SCRIPT WILL NOT WORK!
 MY_CLIENT_ID = "YOUR_CLIENT_ID_HERE"
 MY_SECRET = "YOUR_SECRET_KEY_HERE"
+CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID", )
+CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET")
 
-#load_dotenv()
-CLIENT_ID = os.environ.get("BLIZZARD_CLIENT_ID", MY_CLIENT_ID)
-CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET", MY_SECRET)
+
 
 
 _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
 
+
+
+def is_valid_version(version: str) -> bool:
+    VALID_VERSIONS = { "era", "tbc", "mop" }
+
+    return version in VALID_VERSIONS
 
 def format_with_gold(copper_in) -> str :
     gold = copper_in // 10_000
@@ -161,15 +166,40 @@ def search_creatures(access_token: str, version: str, creature: str, max_results
     req = urllib.request.Request(url)
     req.add_header("Authorization", f"Bearer {access_token}")
 
-
-
     search_terms = creature.lower().split()
-    items_found = []
+    creatures_found = []
 
     try:
         with urllib.request.urlopen(req) as response:
             response: HTTPResponse = response
-            data = json.loads(response.read().decode())
+            data: dict[str, Any] = json.loads(response.read().decode())
+
+            results = data.get("results", [])
+
+            if not results:
+                return {"error": "No creatures found."}
+
+            for item in results:
+                data = item.get("data", {})
+                id = data.get("id")
+                name = data.get("name", {}).get(locale, "Unknown")
+
+                if id and all(term in name.lower() for term in search_terms):
+                    creatures_found.append({"id": id, "name": name})
+                if len(creatures_found) > max_results:
+                    break
+
+            return {
+                "query": query,
+                "results": creatures_found
+            } 
+    
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error": "Error: Creature search API endpoint not found."}
+        return {"error": f"HTTP Error fetching creature data: {e.code}"}
+    except Exception as e:
+        return {"error": str(e)}
     
 
 def search_items_name(access_token: str, version: str, item_name: str, max_results: int = 5,
@@ -529,6 +559,18 @@ def format_item_search_irc(data: dict) -> str:
     formatted_items = [f"[{item['id']}] {item['name']}" for item in results]
     return " | ".join(formatted_items)
 
+
+def format_creature_search_irc(data: dict) ->str:
+    if not data or "error" in data:
+        return f"Error: {data.get('error', 'Search failed.')}"
+
+    results = data.get("results", [])
+    if not results:
+        return f"No items found for '{data.get('query', '')}"
+
+    formatted_items = [f"[{item['id']}] {item['name']}" for item in results]
+    return " | ".join(formatted_items)
+
     
 def format_player_compare_summary(player: dict):
     if not player or "error" in player:
@@ -873,11 +915,11 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
     try:
         query = text.strip()
         if not query:
-            putmsg(chan, "Usage !search <era/tbc/mop> <item name>")
+            putmsg(chan, "Usage: !search <era/tbc/mop> <item name>")
             return
 
         if len(query.split()) < 2:
-            putmsg(chan, "Usage !search <era/tbc/mop> <item name>")
+            putmsg(chan, "Usage: !search <era/tbc/mop> <item name>")
             return
 
         version, search_query = query.split(maxsplit=1)
@@ -894,6 +936,33 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW item data.")
+
+def pubSearchCreatures(nick: str, user: str, hand: str, chan: str, text: str,
+                       **kwargs):
+    try:
+        parts = text.strip().split(maxsplit=1)
+        if len(parts) <2:
+            putmsg(chan, "Usage: !csearch <era/tbc/mop> <creature name>")
+            return
+
+        version, creature_name = parts
+
+        if not is_valid_version(version):
+            putmsg(chan, f"Invalid version '{version}'")
+            return
+        
+
+        putlog(f"Creature Search: <{nick}> on {chan} - {creature_name} [{version.upper()}]")
+
+        token = get_valid_blizzard_token()
+        results = search_creatures(token, version, creature_name)
+
+        putmsg(chan, format_creature_search_irc(results))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching creature data.")
 
 def pubTokenDebug(nick: str, user: str, hand: str, chan: str, text: str,
                   **kwargs):
@@ -926,6 +995,7 @@ WOW_BINDS.append(bind("pub", TESTING_MASK, "!stats", pubCharacterEStats))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!bstats", pubCharacterBStats))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!token", pubTokenDebug))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!rep", pubGetReputation))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!csearch", pubSearchCreatures))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
