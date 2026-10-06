@@ -11,6 +11,8 @@ import traceback
 import time
 import os
 
+from requests import HTTPError
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -206,9 +208,94 @@ def search_creatures(access_token: str, version: str, creature: str, max_results
         return {"error": f"HTTP Error fetching creature data: {e.code}"}
     except Exception as e:
         return {"error": str(e)}
+
+def get_creature_data(access_token: str, version: str, creature_id: int, region="us", locale="en_US") -> dict:
+    version_slug = version_to_slug(format_slug(version))
+    if version_slug == "invalid":
+        return {"error":"Invalid game version. Must be 'era', 'tbc', or 'mop'"}
+    namespace = f"static-{version_slug}-{region}"
+
+    url = f"https://{region}.api.blizzard.com/data/wow/creature/{creature_id}?namespace={namespace}&locale={locale}"
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            response: HTTPResponse = response
+
+            data: dict[str, Any] = json.loads(response.read().decode())
+
+            c_id = data.get("id", creature_id)
+            c_name = data.get("name", "Unknown")
+            t_name = data.get("type", {}).get("name", "Unknown")
+            family = data.get("family", {}).get("name", "Unknown")
+            tameable = "Yes" if data.get("is_tameable") else "No"
+
+            return {
+                "id": c_id,
+                "name": c_name,
+                "type": t_name,
+                "family": family,
+                "tameable": tameable
+            }
+
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error":"Error: Creature not found."}
+        return {"error": f"HTTP Error fetching creature: {e.code}"}
     
 
-def search_items_name(access_token: str, version: str, item_name: str, max_results: int = 5,
+
+def get_item_data(access_token: str, version: str, item_id, region="us", locale="en_US") -> dict :
+    version = format_slug(version)
+    version_slug = version_to_slug(version)
+    namespace = f"static-{version_slug}-{region}"
+    if version_slug == "invalid":
+        return {"error": f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"}
+    
+    url = f"https://{region}.api.blizzard.com/data/wow/item/{item_id}?namespace={namespace}&locale={locale}"
+
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            resp: HTTPResponse = response
+            data: dict[str, Any] = json.loads(resp.read().decode())
+
+            name = data.get("name", "Unknown Item")
+            level = data.get("level", 0)
+            id = data.get("id", 0)
+            req_level = data.get("required_level", 0)
+            item_class = data.get("item_class", {}).get("name", "Unknown Class")
+            item_subclass = data.get("item_subclass", {}).get("name", "Unknown Subclass")
+            purchase_price = format_with_gold(data.get("purchase_price", 0))
+
+            return {
+                "name": data.get("name", "Unknown Item"),
+                "level": data.get("level", 0),
+                "id": data.get(id, 0),
+                "req_level": data.get("required_level", 0),
+                "item_class": data.get("item_class", {}).get("name", "Unknown Class"),
+                "item_subclass": data.get("item_subclass", {}).get("name", "Unknown Subclass"),
+                "purchase_price": format_with_gold(data.get("purchase_price", 0))
+            }
+
+            # return(
+            #     f"Item Name: {name} (ID: {id}) | "
+            #     f"Level: {level} | Req. Level: {req_level} | "
+            #     f"Type: {item_class} ({item_subclass}) | "
+            #     f"Vendor: {purchase_price}"
+            # )
+
+
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error": "Error: Item not found."}
+        return {"error": f"HTTP Error fetching character: {e.code}"}
+    
+
+def search_items(access_token: str, version: str, item_name: str, max_results: int = 5,
         region="us", locale="en_US") -> dict:
     
     query = urllib.parse.quote(item_name)
@@ -432,53 +519,7 @@ def get_character_data(access_token: str, version: str, realm: str, character: s
 
 
 
-def get_item_data(access_token: str, version: str, item_id, region="us", locale="en_US") -> dict :
-    version = format_slug(version)
-    version_slug = version_to_slug(version)
-    namespace = f"static-{version_slug}-{region}"
-    if version_slug == "invalid":
-        return {"error": f"Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"}
-    
-    url = f"https://{region}.api.blizzard.com/data/wow/item/{item_id}?namespace={namespace}&locale={locale}"
 
-    req = urllib.request.Request(url)
-    req.add_header("Authorization", f"Bearer {access_token}")
-
-    try:
-        with urllib.request.urlopen(req) as response:
-            resp: HTTPResponse = response
-            data: dict[str, Any] = json.loads(resp.read().decode())
-
-            name = data.get("name", "Unknown Item")
-            level = data.get("level", 0)
-            id = data.get("id", 0)
-            req_level = data.get("required_level", 0)
-            item_class = data.get("item_class", {}).get("name", "Unknown Class")
-            item_subclass = data.get("item_subclass", {}).get("name", "Unknown Subclass")
-            purchase_price = format_with_gold(data.get("purchase_price", 0))
-
-            return {
-                "name": data.get("name", "Unknown Item"),
-                "level": data.get("level", 0),
-                "id": data.get(id, 0),
-                "req_level": data.get("required_level", 0),
-                "item_class": data.get("item_class", {}).get("name", "Unknown Class"),
-                "item_subclass": data.get("item_subclass", {}).get("name", "Unknown Subclass"),
-                "purchase_price": format_with_gold(data.get("purchase_price", 0))
-            }
-
-            # return(
-            #     f"Item Name: {name} (ID: {id}) | "
-            #     f"Level: {level} | Req. Level: {req_level} | "
-            #     f"Type: {item_class} ({item_subclass}) | "
-            #     f"Vendor: {purchase_price}"
-            # )
-
-
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            return {"error": "Error: Item not found."}
-        return {"error": f"HTTP Error fetching character: {e.code}"}
 
 def get_character_equipment(access_token: str, version: str, realm: str, character: str, region="us", locale="en_US") -> dict:
     realm_slug = format_slug(realm)
@@ -576,6 +617,13 @@ def format_creature_search_irc(data: dict) ->str:
 
     formatted_items = [f"[{item['id']}] {item['name']}" for item in results]
     return " | ".join(formatted_items)
+
+
+def format_creature_summary(data: dict) -> str:
+    if not data or "error" in data:
+        return f"Error: {data.get('error', 'Lookup failed.')}"
+
+    return f"Name: {data.get("name")} | Type: {data.get("type")} | Family: {data.get("family")} | Tameable: {data.get("tameable")}"
 
     
 def format_player_compare_summary(player: dict):
@@ -934,7 +982,7 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
         putlog(f"Item search: <{nick}> {chan} - {search_query} [{version}]")
 
         token = get_valid_blizzard_token()
-        results = search_items_name(token, version, search_query)
+        results = search_items(token, version, search_query)
 
         putmsg(chan, format_item_search_irc(results))
 
@@ -970,6 +1018,35 @@ def pubSearchCreatures(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching creature data.")
 
+
+def pubGetCreatureSummary(nick: str, user: str, hand: str, chan: str, text: str,
+                          **kwargs):
+    try:
+        parts = text.strip().split(maxsplit=1)
+        if len(parts) < 2:
+            putmsg(chan, "Usage !creature <era/tbc/mop> <creature_id>")
+            return
+
+        version, id = parts
+        id = int(id)
+
+        if not is_valid_version(version):
+            putmsg(chan, f"Invalid version '{version}'.")
+            return
+
+        putlog(f"Creature Summary: <{nick}> on {chan} - {id} [{version.upper()}]")
+
+        token = get_valid_blizzard_token()
+        summary = get_creature_data(token, version, id)
+
+        putmsg(chan, format_creature_summary(summary))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching creature data.")
+
+
 def pubTokenDebug(nick: str, user: str, hand: str, chan: str, text: str,
                   **kwargs):
     try:
@@ -1002,6 +1079,7 @@ WOW_BINDS.append(bind("pub", TESTING_MASK, "!bstats", pubCharacterBStats))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!token", pubTokenDebug))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!rep", pubGetReputation))
 WOW_BINDS.append(bind("pub", TESTING_MASK, "!csearch", pubSearchCreatures))
+WOW_BINDS.append(bind("pub", TESTING_MASK, "!creature", pubGetCreatureSummary))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
