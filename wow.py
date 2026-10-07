@@ -1,8 +1,6 @@
 from http.client import HTTPResponse
 import json
 import base64
-from pathlib import Path
-import trace
 from typing import Any
 import urllib.error
 import urllib.parse
@@ -11,7 +9,6 @@ import traceback
 import time
 import os
 
-from requests import HTTPError
 
 try:
     from dotenv import load_dotenv
