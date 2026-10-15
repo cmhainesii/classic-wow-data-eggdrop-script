@@ -26,7 +26,7 @@ MY_SECRET = "YOUR_SECRET_KEY_HERE"
 CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID", MY_CLIENT_ID )
 CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET", MY_SECRET)
 
-
+#test commit!
 
 
 _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
