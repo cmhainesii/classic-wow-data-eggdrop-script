@@ -639,10 +639,13 @@ def format_player_compare_summary(player: dict):
 
 
 def format_player_compare_irc(player1: dict, player2: dict) -> str:
-    if not player1 or "error" in player1:
-        return "Error: Invalid player1 data."
-    elif not player2 or "error" in player2:
-        return "Error: Invalid player2 data."
+    if not player1 or not player2:
+        return "Error: Internal error. Invalid player data."
+    if "error" in player1:
+        return f"{player1.get("error", "Error: MissingNo")}"
+    elif "error" in player2:
+        return f"{player2.get("error", "Error: MissingNo2")}"
+
 
     p1_summary = format_player_compare_summary(player1)
     p2_summary = format_player_compare_summary(player2)
@@ -664,7 +667,7 @@ def format_character_info_irc(info: dict) -> str:
     if not info or "error" in info:
         return "Error: Invalid character data."
 
-    return f"{info['name']} ({info['gender']})- Lvl {info['level']} {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
+    return f"{info['name']} ({info['gender']}) Lvl {info['level']} {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
     
 
 def format_character_equipment_irc(data: dict) -> list[str]:
