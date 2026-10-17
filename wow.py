@@ -20,11 +20,23 @@ from eggdrop import bind
 from eggdrop.tcl import putmsg, putlog
 
 load_dotenv()
+
+
+"""
+***----------------------------------------------------------------------------
+*** User Configuration ***
+***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+""" 
 ### YOU MUST CONFIGURE YOUR API CLIENT &SECRET KEYS OR THE SCRIPT WILL NOT WORK!
 MY_CLIENT_ID = "YOUR_CLIENT_ID_HERE"
 MY_SECRET = "YOUR_SECRET_KEY_HERE"
 CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID", MY_CLIENT_ID )
 CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET", MY_SECRET)
+
+
+# Set the default version and realm
+default_version = "tbc"
+default_realm = "dreamscythe"
 
 
 """
@@ -812,11 +824,16 @@ def pubGetPlayerGear(nick: str, user: str, hand: str, chan: str, text: str,
             return
 
         query = query.split()
-        if len(query) < 3:
-            putmsg(chan, "Usage !gear <era/tbc/mop> <realm> <name>")
-            return
-
-        version, realm, name = query[0], query[1], query[2]
+        arg_count = len(query)
+        if arg_count < 3:
+            if arg_count == 1:
+                version, realm, name = default_version, default_realm, query[0]
+            else:
+                putmsg(chan, "Usage !gear <era/tbc/mop> <realm> <name>")
+                return
+        else:
+            version, realm, name = query[0], query[1], query[2]
+        
         putlog(f"Gear Lookup <{nick}> {chan} - {name}-{realm}")
 
         token = get_valid_blizzard_token()
@@ -840,10 +857,17 @@ def pubCharacterInfo(nick: str, user: str, hand: str, chan: str, text: str,
             return
 
         query = query.split()
-        if len(query) < 3:
-            putmsg(chan, "Usage: !character <era/tbc/mop> <realm> <name>")
-            return
-        version, realm, name = query[0], query[1], query[2]
+        arg_count = len(query)
+        if arg_count < 3:
+            if arg_count == 1:
+                        version = default_version
+                        realm = default_realm
+                        name = query[0]
+            else:
+                putmsg(chan, "Usage: !character <era/tbc/mop> <realm> <name>")
+                return
+        else:
+            version, realm, name = query[0], query[1], query[2]
 
         
         putlog(f"Character lookup <{nick}> on {chan} - {name}-{realm}")
@@ -863,16 +887,18 @@ def pubGetRealmStatus(nick: str, user: str, handle: str, chan: str, text: str,
                       **kwargs):
     try:
         args = text.strip()
-        if not args:
-            putmsg(chan, "Usage: !status <era/tbc/mop> <realm>")
-            return
+        
 
         args_split = args.split()
-        if len(args_split) < 2:
-            putmsg(chan, "Usage: !status <era/tbc/mop> <realm>")
-            return
-
-        version, realm = args_split
+        num_args = len(args_split)
+        if num_args < 2:
+            if num_args == 0:
+                version, realm = default_version, default_realm
+            else:
+                putmsg(chan, "Usage: !status <era/tbc/mop> <realm>")
+                return
+        else:
+            version, realm = args_split
 
 
         putlog(f"Realm Status Query - <{nick}> on {chan} - {realm}")
@@ -897,11 +923,16 @@ def pubComparePlayers(nick: str, user: str, handle: str, chan: str, text: str,
             return
 
         args_split = args.split()
-        if len(args_split) < 4:
-            putmsg(chan, "Usage !compare <era/tbc/mop> <realm> <player1> <player2>")
-            return
+        arg_count = len(args_split)
+        if arg_count < 4:
+            if arg_count == 2:
+                version, realm, player1, player2 = default_version, default_realm, args_split[0], args_split[1]
+            else:
+                putmsg(chan, "Usage !compare <era/tbc/mop> <realm> <player1> <player2>")
+                return
+        else:
+            version, realm, player1, player2 = args_split
 
-        version, realm, player1, player2 = args_split
         token = get_valid_blizzard_token()
         
 
@@ -928,11 +959,16 @@ def pubCharacterEStats(nick: str, user: str, hand: str, chan: str, text: str,
             return
 
         args_split = args.split()
-        if len(args_split) < 3:
-            putmsg(chan, "Usage !stats <era/tbc/mop> <realm> <character>")
-            return
+        arg_count = len(args_split)
+        if arg_count < 3:
+            if arg_count == 1:
+                version, realm, character = default_version, default_realm, args_split[0]
+            else:
+                putmsg(chan, "Usage !stats <era/tbc/mop> <realm> <character>")
+                return
+        else:
+            version, realm, character = args_split
 
-        version, realm, character = args_split
         token = get_valid_blizzard_token()
 
         putlog(f"Fetch Player Stats - <{nick}> on {chan} - {character} [{version}]")
@@ -953,11 +989,16 @@ def pubCharacterBStats(nick: str, user: str, hand: str, chan: str, text: str,
             return
 
         args_split = args.split()
-        if len(args_split) < 3:
-            putmsg(chan, "Usage !stats <era/tbc/mop> <realm> <character>")
-            return
+        arg_count = len(args_split)
+        if arg_count < 3:
+            if arg_count == 1:
+                version, realm, character = default_version, default_realm, args_split[0]
+            else:
+                putmsg(chan, "Usage !stats <era/tbc/mop> <realm> <character>")
+                return
+        else:
+            version, realm, character = args_split
 
-        version, realm, character = args_split
         token = get_valid_blizzard_token()
 
         putlog(f"Fetch Player Stats - <{nick}> on {chan} - {character} [{version}]")
@@ -975,11 +1016,22 @@ def pubGetReputation(nick:str, user: str, hand: str, chan: str, text: str,
     try:
         query = text.strip()
 
-        if not query or len(query.split()) < 4:
+        if not query:
             putmsg(chan, "Usage: !rep <tbc/era/mop> <realm> <character> <faction>")
             return
+        
 
-        version, realm, character, faction = query.split()
+        args = query.split()
+        arg_count = len(args)
+        if arg_count < 4:
+            if arg_count == 2:
+                version, realm, character, faction = default_version, default_realm, args[0], args[1]
+            else:
+                putmsg(chan, "Usage: !rep <tbc/era/mop> <realm> <character> <faction>")
+                return
+        else:
+            version, realm, character, faction = query.split()
+
         token = get_valid_blizzard_token()
 
         putlog(f"Fetch reputation data - <{nick}> on {chan} - {character} - {faction} [{version.upper()}]")
@@ -1002,17 +1054,22 @@ def pubGetReputation(nick:str, user: str, hand: str, chan: str, text: str,
 def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
                 **kwargs):
     try:
-        query = text.strip()
-        if not query:
+        args = text.strip()
+        if not args:
             putmsg(chan, "Usage: !item <era/tbc/mop> <item id>")
             return
 
-        query = query.split()
+        args = args.split()
+        arg_count = len(args)
 
-        if len(query) < 2:
-            putmsg(chan, "Usage: !item <era/tbc/mop> <item id>")
-            return
-        version, item_id = query[0], query[1]
+        if arg_count < 2:
+            if arg_count == 1:
+                version, item_id = default_version, args[0]
+            else:
+                putmsg(chan, "Usage: !item <era/tbc/mop> <item id>")
+                return
+        else:
+            version, item_id = args[0], args[1]
 
         if not item_id.isdigit():
             putmsg(chan, "Item ID must be numeric. Use !search to find the item ID.")
@@ -1038,15 +1095,20 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
                    **kwargs):
     try:
         query = text.strip()
+        args = query.split()
+        arg_count = len(args)
         if not query:
             putmsg(chan, "Usage: !search <era/tbc/mop> <item name>")
             return
 
-        if len(query.split()) < 2:
-            putmsg(chan, "Usage: !search <era/tbc/mop> <item name>")
-            return
-
-        version, search_query = query.split(maxsplit=1)
+        if arg_count < 2:
+            if arg_count == 1:
+                version, search_query = default_version, args[0]
+            else:
+                putmsg(chan, "Usage: !search <era/tbc/mop> <item name>")
+                return
+        else:
+            version, search_query = query.split(maxsplit=1)
         
 
         putlog(f"Item search: <{nick}> {chan} - {search_query} [{version}]")
@@ -1064,12 +1126,16 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
 def pubSearchCreatures(nick: str, user: str, hand: str, chan: str, text: str,
                        **kwargs):
     try:
-        parts = text.strip().split(maxsplit=1)
-        if len(parts) <2:
-            putmsg(chan, "Usage: !csearch <era/tbc/mop> <creature name>")
-            return
-
-        version, creature_name = parts
+        args = text.strip().split(maxsplit=1)
+        arg_count = len(args)
+        if arg_count <2:
+            if arg_count == 1:
+                version, creature_name = default_version, args[0]
+            else:
+                putmsg(chan, "Usage: !csearch <era/tbc/mop> <creature name>")
+                return
+        else:
+            version, creature_name = args
 
         if not is_valid_version(version):
             putmsg(chan, f"Invalid version '{version}'")
@@ -1092,12 +1158,18 @@ def pubSearchCreatures(nick: str, user: str, hand: str, chan: str, text: str,
 def pubGetCreatureSummary(nick: str, user: str, hand: str, chan: str, text: str,
                           **kwargs):
     try:
-        parts = text.strip().split(maxsplit=1)
-        if len(parts) < 2:
-            putmsg(chan, "Usage !creature <era/tbc/mop> <creature_id>")
-            return
+        args = text.strip().split(maxsplit=1)
+        arg_count = len(args)
+        if arg_count < 2:
+            if arg_count == 1:
+                version, id = default_version, args[0]
+            else:
+                putmsg(chan, "Usage !creature <era/tbc/mop> <creature_id>")
+                return
+        else:
+            version, id = args
 
-        version, id = parts
+            
         id = int(id)
 
         if not is_valid_version(version):
