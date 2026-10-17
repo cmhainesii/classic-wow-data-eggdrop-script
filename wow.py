@@ -136,6 +136,11 @@ def version_to_slug(version: str):
     else:
         return "invalid"
 
+def valid_version(version: str) -> bool:
+    raw_version = format_slug(version)
+    if  "tbc" in raw_version or "era" in raw_version or "mop" in raw_version:
+        return True
+    return False
 
 """
 ***----------------------------------------------------------------------------
@@ -202,7 +207,7 @@ def get_realm_status(access_token:str, version: str,realm: str,
 
     try:
         # Step 1:Fetch realm to get it's connected_realm URL/ID
-        realm_url = f"https://{region}.api.blizzard.com/data/wow/realm/{realm_slug}?namespace={namespace}&locale={locale}"
+        realm_url  = f"https://{region}.api.blizzard.com/data/wow/realm/{realm_slug}?namespace={namespace}&locale={locale}"
         req = urllib.request.Request(realm_url, headers=headers)
 
         with urllib.request.urlopen(req) as response:
@@ -1198,7 +1203,50 @@ def pubTokenDebug(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error has occurred.")
-        
+
+
+def pubSetDefaultVersion(nick: str, user: str, hand: str, chan: str, text: str,
+                         **kwargs):
+    global default_version
+    
+    try:
+        args = format_slug(text)
+        if not args:
+            putmsg(chan, f"Usage: !version <era/tbc/mop>")
+            return
+        version = args
+        if valid_version(version):
+            default_version = version
+            putmsg(chan, f"Set default game version to '{version}'.")
+        else:
+            putmsg(chan, f"Invalid game version")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error has occurred.")
+
+def pubSetDefaultRealm(nick: str, user: str, hand: str, chan: str, text:str,
+                       **kwargs):
+
+    global default_realm
+    
+    try:
+        args = format_slug(text)
+        if not args:
+            putmsg(chan, "Usage: !realm <realm>")
+            return
+        realm = args
+
+        default_realm = realm
+        putmsg(chan, f"Set default realm to '{realm}'.")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error has occurred.")
+                
+            
         
 
 if 'WOW_BINDS' in globals(): 
@@ -1207,21 +1255,23 @@ if 'WOW_BINDS' in globals():
     del WOW_BINDS
 
 
-TESTING_MASK = "##wowclassic *"
+TESTING_MASK = "##wowclassic"
 
 WOW_BINDS = list()
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!item", pubGetItemInfo))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!search", pubSearchItems))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!character", pubCharacterInfo))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!gear", pubGetPlayerGear))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!status", pubGetRealmStatus))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!compare", pubComparePlayers))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!stats", pubCharacterEStats))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!bstats", pubCharacterBStats))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!token", pubTokenDebug))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!rep", pubGetReputation))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!csearch", pubSearchCreatures))
-WOW_BINDS.append(bind("pub", TESTING_MASK, "!creature", pubGetCreatureSummary))
+WOW_BINDS.append(bind("pub", "-", "!item", pubGetItemInfo))
+WOW_BINDS.append(bind("pub", "-", "!search", pubSearchItems))
+WOW_BINDS.append(bind("pub", "-", "!character", pubCharacterInfo))
+WOW_BINDS.append(bind("pub", "-", "!gear", pubGetPlayerGear))
+WOW_BINDS.append(bind("pub", "-", "!status", pubGetRealmStatus))
+WOW_BINDS.append(bind("pub", "-", "!compare", pubComparePlayers))
+WOW_BINDS.append(bind("pub", "-", "!stats", pubCharacterEStats))
+WOW_BINDS.append(bind("pub", "-", "!bstats", pubCharacterBStats))
+WOW_BINDS.append(bind("pub", "-", "!token", pubTokenDebug))
+WOW_BINDS.append(bind("pub", "-", "!rep", pubGetReputation))
+WOW_BINDS.append(bind("pub", "-", "!csearch", pubSearchCreatures))
+WOW_BINDS.append(bind("pub", "-", "!creature", pubGetCreatureSummary))
+WOW_BINDS.append(bind("pub", "-", "!version", pubSetDefaultVersion))
+WOW_BINDS.append(bind("pub", "-", "!realm", pubSetDefaultRealm))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
