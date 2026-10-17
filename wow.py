@@ -26,7 +26,57 @@ MY_SECRET = "YOUR_SECRET_KEY_HERE"
 CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID", MY_CLIENT_ID )
 CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET", MY_SECRET)
 
-#test commit!
+
+"""
+***----------------------------------------------------------------------------
+*** XP Data Tables
+***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+""" 
+ # Era / Original Vanilla (1-60)
+ERA_XP_TABLE = {
+    1: 400, 2: 900, 3: 1400, 4: 2100, 5: 2800, 6: 3600, 7: 4500, 8: 5400, 9: 6500, 10: 7600,
+    11: 8800, 12: 10100, 13: 11400, 14: 12900, 15: 14400, 16: 16000, 17: 17700, 18: 19400, 19: 21300, 20: 23200,
+    21: 25200, 22: 27300, 23: 29400, 24: 31700, 25: 34000, 26: 36400, 27: 38900, 28: 41400, 29: 44300, 30: 47400,
+    31: 50800, 32: 54500, 33: 58600, 34: 62800, 35: 67100, 36: 71600, 37: 76100, 38: 80800, 39: 85700, 40: 90700,
+    41: 95800, 42: 101000, 43: 106300, 44: 111800, 45: 117500, 46: 123200, 47: 129100, 48: 135100, 49: 141200, 50: 147500,
+    51: 153900, 52: 160400, 53: 167100, 54: 173900, 55: 180800, 56: 187900, 57: 195000, 58: 202300, 59: 209800
+}
+
+# TBC Anniversary (1-70) - Note: 11-59 are ~20% reduced from Vanilla
+TBC_XP_TABLE = {
+    1: 400, 2: 900, 3: 1400, 4: 2100, 5: 2800, 6: 3600, 7: 4500, 8: 5400, 9: 6500, 10: 7600,
+    11: 8700, 12: 9800, 13: 11000, 14: 12300, 15: 13600, 16: 15000, 17: 16400, 18: 17800, 19: 19300, 20: 20800,
+    21: 22400, 22: 24000, 23: 25500, 24: 27200, 25: 28900, 26: 30500, 27: 32200, 28: 33900, 29: 36300, 30: 38800,
+    31: 41600, 32: 44600, 33: 48000, 34: 51400, 35: 55000, 36: 58700, 37: 62400, 38: 66200, 39: 70200, 40: 74300,
+    41: 78500, 42: 82800, 43: 87100, 44: 91600, 45: 96300, 46: 101000, 47: 105800, 48: 110700, 49: 115700, 50: 120900,
+    51: 126100, 52: 131500, 53: 137000, 54: 142500, 55: 148200, 56: 154000, 57: 159900, 58: 165800, 59: 172000, 60: 494000,
+    61: 574700, 62: 614400, 63: 650300, 64: 682300, 65: 710200, 66: 734100, 67: 753700, 68: 768900, 69: 779700
+}
+
+# MoP Classic (1-90) - Includes 5.3 reductions for 85-90
+MOP_XP_TABLE = {
+    # 1-60 (Heavily reduced)
+    1: 400, 2: 900, 3: 1400, 4: 2100, 5: 2800, 6: 3600, 7: 4500, 8: 5400, 9: 6500, 10: 7600,
+    11: 8700, 12: 9800, 13: 11000, 14: 12300, 15: 13600, 16: 15000, 17: 16400, 18: 17800, 19: 19300, 20: 20800,
+    21: 22400, 22: 24000, 23: 25500, 24: 27200, 25: 28900, 26: 30500, 27: 32200, 28: 33900, 29: 36300, 30: 38800,
+    31: 41600, 32: 44600, 33: 48000, 34: 51400, 35: 55000, 36: 58700, 37: 62400, 38: 66200, 39: 70200, 40: 74300,
+    41: 78500, 42: 82800, 43: 87100, 44: 91600, 45: 96300, 46: 101000, 47: 105800, 48: 110700, 49: 115700, 50: 120900,
+    51: 126100, 52: 131500, 53: 137000, 54: 142500, 55: 148200, 56: 154000, 57: 159900, 58: 165800, 59: 172000, 60: 290000,
+    # 61-70 (Outland)
+    61: 317000, 62: 349000, 63: 386000, 64: 428000, 65: 475000, 66: 527000, 67: 585000, 68: 648000, 69: 717000, 70: 1523800,
+    # 71-80 (Northrend)
+    71: 1539000, 72: 1555700, 73: 1571800, 74: 1587900, 75: 1604200, 76: 1620700, 77: 1637400, 78: 1653900, 79: 1670800, 80: 1686300,
+    # 81-85 (Cata)
+    81: 2121500, 82: 2669000, 83: 3469000, 84: 4583000, 85: 13000000,
+    # 86-89 (Pandaria)
+    86: 15080000, 87: 22600000, 88: 27300000, 89: 32800000
+}
+
+XP_TABLES = {
+    "era": ERA_XP_TABLE,
+    "tbc": TBC_XP_TABLE,
+    "mop": MOP_XP_TABLE
+}
 
 
 _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
@@ -46,6 +96,23 @@ def format_with_gold(copper_in) -> str :
 
 def format_slug(realm: str) -> str:
     return realm.strip().lower().replace(' ', '-').replace("'", "")
+
+
+def get_xp_progress(version: str, level: int, current_xp: int) -> str:
+    version = format_slug(version)
+    max_levels = {"era": 60, "tbc": 70, "mop": 90}
+
+    if level >= max_levels.get(version, 60):
+        return "Max Level"
+
+    table = XP_TABLES.get(version, ERA_XP_TABLE)
+    needed_xp = table.get(level)
+
+    if not needed_xp:
+        return "Unknown"
+
+    pct = (current_xp / needed_xp) * 100
+    return f"{pct:.1f}%"
 
 def version_to_slug(version: str):
     if version == "era":
@@ -489,6 +556,7 @@ def get_character_data(access_token: str, version: str, realm: str, character: s
             faction = data.get("faction", {}).get("name", "Unknown Faction")
             ilvl = data.get("equipped_item_level", 0)
             gender = data.get("gender", {}).get("name", "Unknown Gender")
+            xp_progress_pct = get_xp_progress(version,  level, data.get("experience", 0))
 
             # Guild is omitted from JSON if player is unguilded
             guild_info = ""
@@ -507,7 +575,8 @@ def get_character_data(access_token: str, version: str, realm: str, character: s
                 "ilvl": ilvl,
                 "gender": gender,
                 "guild": guild_info,
-                "version": version
+                "version": version,
+                "xp_progress_pct": xp_progress_pct
             }
     except urllib.error.HTTPError as e:
         if e.code == 404:
@@ -634,8 +703,9 @@ def format_player_compare_summary(player: dict):
     race = player.get("race")
     cls = player.get("class")
     ilvl = player.get("ilvl")
+    xp_pct = player.get("xp_progress_pct")
 
-    return f"{name}-{realm} (Lvl {level} {race} {cls} | {ilvl} iLvl) ({gender})"
+    return f"{name}-{realm} (Lvl {level} ({xp_pct}%) {race} {cls} | {ilvl} iLvl) ({gender})"
 
 
 def format_player_compare_irc(player1: dict, player2: dict) -> str:
@@ -667,7 +737,7 @@ def format_character_info_irc(info: dict) -> str:
     if not info or "error" in info:
         return "Error: Invalid character data."
 
-    return f"{info['name']} ({info['gender']}) Lvl {info['level']} {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
+    return f"{info['name']} ({info['gender']}) Lvl {info['level']} ({info['xp_progress_pct']}) {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
     
 
 def format_character_equipment_irc(data: dict) -> list[str]:
