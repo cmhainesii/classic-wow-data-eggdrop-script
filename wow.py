@@ -1,4 +1,5 @@
 from http.client import HTTPResponse
+import math
 import json
 import base64
 from typing import Any
@@ -123,7 +124,7 @@ def get_xp_progress(version: str, level: int, current_xp: int) -> str:
     if not needed_xp:
         return "Unknown"
 
-    pct = (current_xp / needed_xp) * 100
+    pct = math.ceil((current_xp / needed_xp) * 100)
     return f"{pct:.1f}%"
 
 def version_to_slug(version: str):
