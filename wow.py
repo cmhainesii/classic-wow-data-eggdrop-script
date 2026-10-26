@@ -94,6 +94,26 @@ XP_TABLES = {
 
 _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
 
+SUNKEN_TEMPLE_ORDER = "S N SW SE NW NE"
+
+WOWHEAD_BASE_URL = "https://wowhead.com"
+
+
+def to_wowhead_version(version: str) -> str:
+    if version == "tbc":
+        return "tbc"
+    elif version == "era":
+        return "classic"
+    elif version == "mop":
+        return "mop-classic"
+    else:
+        return "invalid"
+
+def get_wowhead_item_link(id: str, version: str) -> str:
+    ver = to_wowhead_version(version)
+    if ver == "invalid":
+        return "invalid"
+    return f"{WOWHEAD_BASE_URL}/{ver}/item={id}"
 
 
 def is_valid_version(version: str) -> bool:
@@ -107,8 +127,10 @@ def format_with_gold(copper_in) -> str :
     copper = copper_in % 100
     return f"{gold}g {silver}s {copper}c"
 
-def format_slug(realm: str) -> str:
-    return realm.strip().lower().replace(' ', '-').replace("'", "")
+def format_slug(name: str) -> str:
+    cleaned = name.strip().lower().replace(' ', '-').replace("'", "")
+    # Percent-encode Unicode characters (e.g. 'ö' becomes '%C3%B6')
+    return urllib.parse.quote(cleaned)
 
 
 def get_xp_progress(version: str, level: int, current_xp: int) -> str:
@@ -352,15 +374,17 @@ def get_item_data(access_token: str, version: str, item_id, region="us", locale=
             item_class = data.get("item_class", {}).get("name", "Unknown Class")
             item_subclass = data.get("item_subclass", {}).get("name", "Unknown Subclass")
             purchase_price = format_with_gold(data.get("purchase_price", 0))
+            wowhead_url = get_wowhead_item_link(id, version)
 
             return {
-                "name": data.get("name", "Unknown Item"),
-                "level": data.get("level", 0),
-                "id": data.get(id, 0),
-                "req_level": data.get("required_level", 0),
-                "item_class": data.get("item_class", {}).get("name", "Unknown Class"),
-                "item_subclass": data.get("item_subclass", {}).get("name", "Unknown Subclass"),
-                "purchase_price": format_with_gold(data.get("purchase_price", 0))
+                "name": name,
+                "level": level,
+                "id": id,
+                "req_level": req_level,
+                "item_class": item_class,
+                "item_subclass": item_subclass,
+                "purchase_price": purchase_price,
+                "wowhead_url": wowhead_url,
             }
 
             # return(
@@ -665,6 +689,7 @@ def format_item_data_irc(info: dict):
     return (
         f"Item Name: {info.get("name")} (ID: {info.get("id")}) | "
         f"Level: {info.get("level")} | Req. Level: {info.get("req_level")} | "
+        f"{info.get("wowhead_url")}"
 
     )
 
@@ -852,7 +877,7 @@ def pubGetPlayerGear(nick: str, user: str, hand: str, chan: str, text: str,
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
-        putmsg(chan, "An error occurred fetching WoW item data")
+        putmsg(chan, "An error occurred fetching player gear data.")
 
 def pubCharacterInfo(nick: str, user: str, hand: str, chan: str, text: str,
                      **kwargs):
@@ -886,7 +911,7 @@ def pubCharacterInfo(nick: str, user: str, hand: str, chan: str, text: str,
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
-        putmsg(chan, "An error occurred fetching WoW item data.")
+        putmsg(chan, "An error occurred fetching player character data.")
 
 
 def pubGetRealmStatus(nick: str, user: str, handle: str, chan: str, text: str,
@@ -918,6 +943,16 @@ def pubGetRealmStatus(nick: str, user: str, handle: str, chan: str, text: str,
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching realm status.")
+
+def pubSunkenTempleOrder(nick: str, user: str, handle:str, chan: str, text: str,
+                         **kwargs):
+    try:
+        putmsg(chan, f"Sunken Temple Statue Order: {SUNKEN_TEMPLE_ORDER}")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred.")
 
 
 def pubComparePlayers(nick: str, user: str, handle: str, chan: str, text: str,
@@ -1273,6 +1308,7 @@ WOW_BINDS.append(bind("pub", "-", "!csearch", pubSearchCreatures))
 WOW_BINDS.append(bind("pub", "-", "!creature", pubGetCreatureSummary))
 WOW_BINDS.append(bind("pub", "-", "!version", pubSetDefaultVersion))
 WOW_BINDS.append(bind("pub", "-", "!realm", pubSetDefaultRealm))
+WOW_BINDS.append(bind("pub", "-", "!st", pubSunkenTempleOrder))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
