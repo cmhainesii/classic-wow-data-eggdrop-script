@@ -485,7 +485,7 @@ def get_chararacter_base_stats(
             response: HTTPResponse = response
             data: dict[str, Any] = json.loads(response.read().decode())
 
-            name = character_slug.capitalize()
+            name = character
             realm_formatted = realm_slug.capitalize()
             version_formatted = format_slug(version).upper()
             strength = data.get("strength", {}).get(category, 0)
@@ -638,7 +638,7 @@ def get_character_equipment(access_token: str, version: str, realm: str, charact
     if "invalid" in version_slug:
         return {"error": "Invalid game version. Must be 'era', 'tbc', or 'mop'."}
     
-    character_name = character.lower()
+    character_name = format_slug(character)
     url = f"https://{region}.api.blizzard.com/profile/wow/character/{realm_slug}/{character_name}/equipment?namespace={namespace}&locale={locale}"
     req = urllib.request.Request(url)
     req.add_header("Authorization", f"Bearer {access_token}")
