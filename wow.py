@@ -1243,59 +1243,6 @@ def pubGetCreatureSummary(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching creature data.")
 
-
-def pubTokenDebug(nick: str, user: str, hand: str, chan: str, text: str,
-                  **kwargs):
-    try:
-        putmsg(nick, f"Token: {get_valid_blizzard_token()}")
-
-    except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
-        putlog(traceback.format_exc())
-        putmsg(chan, "An error has occurred.")
-
-
-def pubSetDefaultVersion(nick: str, user: str, hand: str, chan: str, text: str,
-                         **kwargs):
-    global DEFAULT_VERSION
-    
-    try:
-        args = format_slug(text)
-        if not args:
-            putmsg(chan, f"Usage: !version <era/tbc/mop>")
-            return
-        version = args
-        if valid_version(version):
-            DEFAULT_VERSION = version
-            putmsg(chan, f"Set default game version to '{version}'.")
-        else:
-            putmsg(chan, f"Invalid game version")
-
-    except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
-        putlog(traceback.format_exc())
-        putmsg(chan, "An error has occurred.")
-
-def pubSetDefaultRealm(nick: str, user: str, hand: str, chan: str, text:str,
-                       **kwargs):
-
-    global DEFAULT_REALM
-    
-    try:
-        args = format_slug(text)
-        if not args:
-            putmsg(chan, "Usage: !realm <realm>")
-            return
-        realm = args
-
-        DEFAULT_REALM = realm
-        putmsg(chan, f"Set default realm to '{realm}'.")
-
-    except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
-        putlog(traceback.format_exc())
-        putmsg(chan, "An error has occurred.")
-
 """
 ***----------------------------------------------------------------------------
 *** TCL DCC BIND FUNCTIONS
@@ -1326,7 +1273,7 @@ def dccGetItemInfo(handle: str, idx: str, text: str,
             return
 
         nick = idx2hand(idx)
-        putlog(f"Item Lookup <{nick}> via Partyline -  {item_id} [{version}]")
+        #putlog(f"Item Lookup <{nick}> via Partyline -  {item_id} [{version}]")
 
         token = get_valid_blizzard_token()
         item_data = get_item_data(token, version, int(item_id))
@@ -1371,7 +1318,93 @@ def dccSearchItems(handle: str, idx: str, text: str,
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
         putdcc(idx, "An error occurred fetching WoW item data.")
-        
+
+def dccGetPlayerGear(handle: str, idx: str, text: str,
+                     **kwargs):
+    try:
+        query = text.strip()
+        if not query:
+            putdcc(idx, "Usage !gear <era/tbc/mop> <realm> <name>")
+            return
+
+        query = query.split()
+        arg_count = len(query)
+        if arg_count < 3:
+            if arg_count == 1:
+                version, realm, name = DEFAULT_VERSION, DEFAULT_REALM, query[0]
+            else:
+                putdcc(idx, "Usage !gear <era/tbc/mop> <realm> <name>")
+                return
+        else:
+            version, realm, name = query[0], query[1], query[2]
+
+        #putlog(f"Gear Lookup <{nick}> {chan} - {name}-{realm}")
+
+        token = get_valid_blizzard_token()
+        equipment = get_character_equipment(token, version, realm, name)
+
+
+        for line in format_character_equipment_irc(equipment):
+            putdcc(idx, line)
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching player gear data.")
+
+
+def dccSetDefaultVersion(handle: str, idx: str, text: str,
+                         **kwargs):
+    global DEFAULT_VERSION
+    
+    try:
+        args = format_slug(text)
+        if not args:
+            putdcc(idx, f"Usage: !version <era/tbc/mop>")
+            return
+        version = args
+        if valid_version(version):
+            DEFAULT_VERSION = version
+            putdcc(idx, f"Set default game version to '{version}'.")
+        else:
+            putdcc(idx, f"Invalid game version")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error has occurred.")
+
+
+def dccTokenDebug(handle: str, idx: str, text: str,
+                  **kwargs):
+    try:
+        putdcc(idx, f"Token: {get_valid_blizzard_token()}")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error has occurred.")
+
+def dccSetDefaultRealm(handle: str, idx: str, text:str,
+                       **kwargs):
+
+    global DEFAULT_REALM
+    
+    try:
+        args = format_slug(text)
+        if not args:
+            putdcc(idx, "Usage: !realm <realm>")
+            return
+        realm = args
+
+        DEFAULT_REALM = realm
+        putdcc(idx, f"Set default realm to '{realm}'.")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error has occurred.")
+
 
 if 'WOW_BINDS' in globals(): 
     for wbind in WOW_BINDS:
@@ -1390,15 +1423,16 @@ WOW_BINDS.append(bind("pub", "-", "!status", pubGetRealmStatus))
 WOW_BINDS.append(bind("pub", "-", "!compare", pubComparePlayers))
 WOW_BINDS.append(bind("pub", "-", "!stats", pubCharacterEStats))
 WOW_BINDS.append(bind("pub", "-", "!bstats", pubCharacterBStats))
-WOW_BINDS.append(bind("pub", "-", "!token", pubTokenDebug))
 WOW_BINDS.append(bind("pub", "-", "!rep", pubGetReputation))
 WOW_BINDS.append(bind("pub", "-", "!csearch", pubSearchCreatures))
 WOW_BINDS.append(bind("pub", "-", "!creature", pubGetCreatureSummary))
-WOW_BINDS.append(bind("pub", "-", "!version", pubSetDefaultVersion))
-WOW_BINDS.append(bind("pub", "-", "!realm", pubSetDefaultRealm))
 WOW_BINDS.append(bind("pub", "-", "!st", pubSunkenTempleOrder))
 WOW_BINDS.append(bind("dcc", "-", "item", dccGetItemInfo))
 WOW_BINDS.append(bind("dcc", "-", "search", dccSearchItems))
+WOW_BINDS.append(bind("dcc", "-", "gear", dccGetPlayerGear))
+WOW_BINDS.append(bind("dcc", "-", "version", dccSetDefaultVersion))
+WOW_BINDS.append(bind("dcc", "-", "token", dccTokenDebug))
+WOW_BINDS.append(bind("dcc", "-", "realm", dccSetDefaultRealm))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
