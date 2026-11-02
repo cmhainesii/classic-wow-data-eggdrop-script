@@ -2,6 +2,7 @@ from http.client import HTTPResponse
 import math
 import json
 import base64
+from re import M
 from typing import Any
 import urllib.error
 import urllib.parse
@@ -36,8 +37,8 @@ CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET", MY_SECRET)
 
 
 # Set the default version and realm
-default_version = "tbc"
-default_realm = "dreamscythe"
+DEFAULT_VERSION = "tbc"
+DEFAULT_REALM = "dreamscythe"
 
 
 """
@@ -114,6 +115,11 @@ def get_wowhead_item_link(id: str, version: str) -> str:
     if ver == "invalid":
         return "invalid"
     return f"{WOWHEAD_BASE_URL}/{ver}/item={id}"
+
+
+def get_wowhead_creature_link(id: str, version: str) -> str:
+    ver = to_wowhead_version(version)
+    return f"{WOWHEAD_BASE_URL}/{ver}/npc={id}/"
 
 
 def is_valid_version(version: str) -> bool:
@@ -313,7 +319,7 @@ def search_creatures(access_token: str, version: str, creature: str, max_results
     except Exception as e:
         return {"error": str(e)}
 
-def get_creature_data(access_token: str, version: str, creature_id: int, region="us", locale="en_US") -> dict:
+def get_creature_data(access_token: str, version: str, creature_id: str, region="us", locale="en_US") -> dict:
     version_slug = version_to_slug(format_slug(version))
     if version_slug == "invalid":
         return {"error":"Invalid game version. Must be 'era', 'tbc', or 'mop'"}
@@ -334,13 +340,15 @@ def get_creature_data(access_token: str, version: str, creature_id: int, region=
             t_name = data.get("type", {}).get("name", "Unknown")
             family = data.get("family", {}).get("name", "Unknown")
             tameable = "Yes" if data.get("is_tameable") else "No"
+            wowhead_url = get_wowhead_creature_link(creature_id, version)
 
             return {
                 "id": c_id,
                 "name": c_name,
                 "type": t_name,
                 "family": family,
-                "tameable": tameable
+                "tameable": tameable,
+                "wowhead_url": wowhead_url
             }
 
     except urllib.error.HTTPError as e:
@@ -350,7 +358,7 @@ def get_creature_data(access_token: str, version: str, creature_id: int, region=
     
 
 
-def get_item_data(access_token: str, version: str, item_id, region="us", locale="en_US") -> dict :
+def get_item_data(access_token: str, version: str, item_id: str, region="us", locale="en_US") -> dict :
     version = format_slug(version)
     version_slug = version_to_slug(version)
     namespace = f"static-{version_slug}-{region}"
@@ -732,7 +740,10 @@ def format_creature_summary(data: dict) -> str:
     if not data or "error" in data:
         return f"Error: {data.get('error', 'Lookup failed.')}"
 
-    return f"Name: {data.get("name")} | Type: {data.get("type")} | Family: {data.get("family")} | Tameable: {data.get("tameable")}"
+    return(
+        f"Name: {data.get("name")} | Type: {data.get("type")} | Family: {data.get("family")} | Tameable: {data.get("tameable")} | "
+        f"{data.get("wowhead_url")}"
+    )
 
     
 def format_player_compare_summary(player: dict):
@@ -858,7 +869,7 @@ def pubGetPlayerGear(nick: str, user: str, hand: str, chan: str, text: str,
         arg_count = len(query)
         if arg_count < 3:
             if arg_count == 1:
-                version, realm, name = default_version, default_realm, query[0]
+                version, realm, name = DEFAULT_VERSION, DEFAULT_REALM, query[0]
             else:
                 putmsg(chan, "Usage !gear <era/tbc/mop> <realm> <name>")
                 return
@@ -891,8 +902,8 @@ def pubCharacterInfo(nick: str, user: str, hand: str, chan: str, text: str,
         arg_count = len(query)
         if arg_count < 3:
             if arg_count == 1:
-                        version = default_version
-                        realm = default_realm
+                        version = DEFAULT_VERSION
+                        realm = DEFAULT_REALM
                         name = query[0]
             else:
                 putmsg(chan, "Usage: !character <era/tbc/mop> <realm> <name>")
@@ -924,7 +935,7 @@ def pubGetRealmStatus(nick: str, user: str, handle: str, chan: str, text: str,
         num_args = len(args_split)
         if num_args < 2:
             if num_args == 0:
-                version, realm = default_version, default_realm
+                version, realm = DEFAULT_VERSION, DEFAULT_REALM
             else:
                 putmsg(chan, "Usage: !status <era/tbc/mop> <realm>")
                 return
@@ -967,7 +978,7 @@ def pubComparePlayers(nick: str, user: str, handle: str, chan: str, text: str,
         arg_count = len(args_split)
         if arg_count < 4:
             if arg_count == 2:
-                version, realm, player1, player2 = default_version, default_realm, args_split[0], args_split[1]
+                version, realm, player1, player2 = DEFAULT_VERSION, DEFAULT_REALM, args_split[0], args_split[1]
             else:
                 putmsg(chan, "Usage !compare <era/tbc/mop> <realm> <player1> <player2>")
                 return
@@ -1003,7 +1014,7 @@ def pubCharacterEStats(nick: str, user: str, hand: str, chan: str, text: str,
         arg_count = len(args_split)
         if arg_count < 3:
             if arg_count == 1:
-                version, realm, character = default_version, default_realm, args_split[0]
+                version, realm, character = DEFAULT_VERSION, DEFAULT_REALM, args_split[0]
             else:
                 putmsg(chan, "Usage !stats <era/tbc/mop> <realm> <character>")
                 return
@@ -1033,7 +1044,7 @@ def pubCharacterBStats(nick: str, user: str, hand: str, chan: str, text: str,
         arg_count = len(args_split)
         if arg_count < 3:
             if arg_count == 1:
-                version, realm, character = default_version, default_realm, args_split[0]
+                version, realm, character = DEFAULT_VERSION, DEFAULT_REALM, args_split[0]
             else:
                 putmsg(chan, "Usage !stats <era/tbc/mop> <realm> <character>")
                 return
@@ -1066,7 +1077,7 @@ def pubGetReputation(nick:str, user: str, hand: str, chan: str, text: str,
         arg_count = len(args)
         if arg_count < 4:
             if arg_count == 2:
-                version, realm, character, faction = default_version, default_realm, args[0], args[1]
+                version, realm, character, faction = DEFAULT_VERSION, DEFAULT_REALM, args[0], args[1]
             else:
                 putmsg(chan, "Usage: !rep <tbc/era/mop> <realm> <character> <faction>")
                 return
@@ -1102,7 +1113,7 @@ def dccGetItemInfo(handle: str, idx: str, text: str,
 
         if arg_count < 2:
             if arg_count == 1:
-                version, item_id = default_version, args[0]
+                version, item_id = DEFAULT_VERSION, args[0]
             else:
                 putdcc(idx, f"Usage .item <era/tbc/mop> <item-id>")
                 return
@@ -1141,7 +1152,7 @@ def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
 
         if arg_count < 2:
             if arg_count == 1:
-                version, item_id = default_version, args[0]
+                version, item_id = DEFAULT_VERSION, args[0]
             else:
                 putmsg(chan, "Usage: !item <era/tbc/mop> <item id>")
                 return
@@ -1180,7 +1191,7 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
 
         if arg_count < 2:
             if arg_count == 1:
-                version, search_query = default_version, args[0]
+                version, search_query = DEFAULT_VERSION, args[0]
             else:
                 putmsg(chan, "Usage: !search <era/tbc/mop> <item name>")
                 return
@@ -1209,7 +1220,7 @@ def pubSearchCreatures(nick: str, user: str, hand: str, chan: str, text: str,
         arg_count = len(args)
         if arg_count <2:
             if arg_count == 1:
-                version, creature_name = default_version, args[0]
+                version, creature_name = DEFAULT_VERSION, args[0]
             else:
                 putmsg(chan, "Usage: !csearch <era/tbc/mop> <creature name>")
                 return
@@ -1241,7 +1252,7 @@ def pubGetCreatureSummary(nick: str, user: str, hand: str, chan: str, text: str,
         arg_count = len(args)
         if arg_count < 2:
             if arg_count == 1:
-                version, id = default_version, args[0]
+                version, id = DEFAULT_VERSION, args[0]
             else:
                 putmsg(chan, "Usage !creature <era/tbc/mop> <creature_id>")
                 return
@@ -1281,7 +1292,7 @@ def pubTokenDebug(nick: str, user: str, hand: str, chan: str, text: str,
 
 def pubSetDefaultVersion(nick: str, user: str, hand: str, chan: str, text: str,
                          **kwargs):
-    global default_version
+    global DEFAULT_VERSION
     
     try:
         args = format_slug(text)
@@ -1290,7 +1301,7 @@ def pubSetDefaultVersion(nick: str, user: str, hand: str, chan: str, text: str,
             return
         version = args
         if valid_version(version):
-            default_version = version
+            DEFAULT_VERSION = version
             putmsg(chan, f"Set default game version to '{version}'.")
         else:
             putmsg(chan, f"Invalid game version")
@@ -1303,7 +1314,7 @@ def pubSetDefaultVersion(nick: str, user: str, hand: str, chan: str, text: str,
 def pubSetDefaultRealm(nick: str, user: str, hand: str, chan: str, text:str,
                        **kwargs):
 
-    global default_realm
+    global DEFAULT_REALM
     
     try:
         args = format_slug(text)
@@ -1312,7 +1323,7 @@ def pubSetDefaultRealm(nick: str, user: str, hand: str, chan: str, text:str,
             return
         realm = args
 
-        default_realm = realm
+        DEFAULT_REALM = realm
         putmsg(chan, f"Set default realm to '{realm}'.")
 
     except Exception as e:
