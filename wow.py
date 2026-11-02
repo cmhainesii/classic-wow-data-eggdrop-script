@@ -853,7 +853,7 @@ def format_reputation_irc(data: dict, search_faction: str) -> list[str]:
 
 """
 ***----------------------------------------------------------------------------
-*** TCL BIND FUNCTIONS
+*** TCL PUBLIC BIND FUNCTIONS
 ***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 """
 
@@ -1101,41 +1101,7 @@ def pubGetReputation(nick:str, user: str, hand: str, chan: str, text: str,
         putmsg(chan, "An error occurred fetching reputation data.")
 
 
-def dccGetItemInfo(handle: str, idx: str, text: str,
-                   **kwargs):
-    try:
-        args = text.strip()
-        if not args:
-            putdcc(idx, "Usage: .item <era/tbc/mop> <item-id>")
-            return
-        args = args.split()
-        arg_count = len(args)
 
-        if arg_count < 2:
-            if arg_count == 1:
-                version, item_id = DEFAULT_VERSION, args[0]
-            else:
-                putdcc(idx, f"Usage .item <era/tbc/mop> <item-id>")
-                return
-        else:
-            version, item_id = args
-
-        if not item_id.isdigit():
-            putdcc(idx, "Item ID must be numeric. Use !search to find the item ID.")
-            return
-
-        nick = idx2hand(idx)
-        putlog(f"Item Lookup <{nick}> via Partyline -  {item_id} [{version}]")
-
-        token = get_valid_blizzard_token()
-        item_data = get_item_data(token, version, int(item_id))
-
-        putdcc(idx, format_item_data_irc(item_data))
-
-    except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
-        putlog(traceback.format_exc())
-        putdcc(idx, "An error occurred fetching item data.")
 
 
 
@@ -1210,43 +1176,6 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW item data.")
-
-
-def dccSearchItems(handle: str, idx: str, text: str,
-                   **kwargs):
-    try:
-        query = text.strip()
-        args = query.split()
-        arg_count = len(args)
-        if not query:
-            putdcc(idx, "Usage: !search <era/tbc/mop> <item name>")
-            return
-
-        if arg_count < 2:
-            if arg_count == 1:
-                version, search_query = DEFAULT_VERSION, args[0]
-            else:
-                putdcc(idx, "Usage: !search <era/tbc/mop> <item name>")
-                return
-        else:
-            version, search_query = query.split(maxsplit=1)
-
-        nick = idx2hand(idx)
-        
-
-        #putlog(f"Item search: <{nick}> {chan} - {search_query} [{version}]")
-
-        token = get_valid_blizzard_token()
-        results = search_items(token, version, search_query)
-
-        putdcc(idx, format_item_search_irc(results))
-
-    except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
-        putlog(traceback.format_exc())
-        putdcc(idx, "An error occurred fetching WoW item data.")
-
-
 
 
 def pubSearchCreatures(nick: str, user: str, hand: str, chan: str, text: str,
@@ -1366,8 +1295,82 @@ def pubSetDefaultRealm(nick: str, user: str, hand: str, chan: str, text:str,
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error has occurred.")
+
+"""
+***----------------------------------------------------------------------------
+*** TCL DCC BIND FUNCTIONS
+***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+"""
                 
-            
+def dccGetItemInfo(handle: str, idx: str, text: str,
+                   **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+            putdcc(idx, "Usage: .item <era/tbc/mop> <item-id>")
+            return
+        args = args.split()
+        arg_count = len(args)
+
+        if arg_count < 2:
+            if arg_count == 1:
+                version, item_id = DEFAULT_VERSION, args[0]
+            else:
+                putdcc(idx, f"Usage .item <era/tbc/mop> <item-id>")
+                return
+        else:
+            version, item_id = args
+
+        if not item_id.isdigit():
+            putdcc(idx, "Item ID must be numeric. Use !search to find the item ID.")
+            return
+
+        nick = idx2hand(idx)
+        putlog(f"Item Lookup <{nick}> via Partyline -  {item_id} [{version}]")
+
+        token = get_valid_blizzard_token()
+        item_data = get_item_data(token, version, int(item_id))
+
+        putdcc(idx, format_item_data_irc(item_data))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching item data.")
+
+def dccSearchItems(handle: str, idx: str, text: str,
+                   **kwargs):
+    try:
+        query = text.strip()
+        args = query.split()
+        arg_count = len(args)
+        if not query:
+            putdcc(idx, "Usage: !search <era/tbc/mop> <item name>")
+            return
+
+        if arg_count < 2:
+            if arg_count == 1:
+                version, search_query = DEFAULT_VERSION, args[0]
+            else:
+                putdcc(idx, "Usage: !search <era/tbc/mop> <item name>")
+                return
+        else:
+            version, search_query = query.split(maxsplit=1)
+
+        nick = idx2hand(idx)
+        
+
+        #putlog(f"Item search: <{nick}> {chan} - {search_query} [{version}]")
+
+        token = get_valid_blizzard_token()
+        results = search_items(token, version, search_query)
+
+        putdcc(idx, format_item_search_irc(results))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching WoW item data.")
         
 
 if 'WOW_BINDS' in globals(): 
