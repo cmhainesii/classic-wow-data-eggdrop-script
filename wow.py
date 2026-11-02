@@ -1212,6 +1212,42 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
         putmsg(chan, "An error occurred fetching WoW item data.")
 
 
+def dccSearchItems(handle: str, idx: str, text: str,
+                   **kwargs):
+    try:
+        query = text.strip()
+        args = query.split()
+        arg_count = len(args)
+        if not query:
+            putdcc(idx, "Usage: !search <era/tbc/mop> <item name>")
+            return
+
+        if arg_count < 2:
+            if arg_count == 1:
+                version, search_query = DEFAULT_VERSION, args[0]
+            else:
+                putdcc(idx, "Usage: !search <era/tbc/mop> <item name>")
+                return
+        else:
+            version, search_query = query.split(maxsplit=1)
+
+        nick = idx2hand(idx)
+        
+
+        #putlog(f"Item search: <{nick}> {chan} - {search_query} [{version}]")
+
+        token = get_valid_blizzard_token()
+        results = search_items(token, version, search_query)
+
+        putdcc(idx, format_item_search_irc(results))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching WoW item data.")
+
+
+
 
 def pubSearchCreatures(nick: str, user: str, hand: str, chan: str, text: str,
                        **kwargs):
@@ -1359,6 +1395,7 @@ WOW_BINDS.append(bind("pub", "-", "!version", pubSetDefaultVersion))
 WOW_BINDS.append(bind("pub", "-", "!realm", pubSetDefaultRealm))
 WOW_BINDS.append(bind("pub", "-", "!st", pubSunkenTempleOrder))
 WOW_BINDS.append(bind("dcc", "-", "item", dccGetItemInfo))
+WOW_BINDS.append(bind("dcc", "-", "search", dccSearchItems))
 
 #bind("pub", "*", "!movie", pubGetMovie)
 
