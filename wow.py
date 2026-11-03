@@ -19,7 +19,8 @@ except ImportError:
     pass
 
 from eggdrop import bind
-from eggdrop.tcl import putmsg, putlog, putdcc, idx2hand
+from eggdrop.tcl import putmsg, putlog, putdcc
+#from eggdrop.tcl import idx2hand
 
 load_dotenv()
 
@@ -1304,11 +1305,6 @@ def dcc_search_items(handle: str, idx: str, text: str,
         else:
             version, search_query = query.split(maxsplit=1)
 
-        nick = idx2hand(idx)
-        
-
-        #putlog(f"Item search: <{nick}> {chan} - {search_query} [{version}]")
-
         token = get_valid_blizzard_token()
         results = search_items(token, version, search_query)
 
@@ -1539,6 +1535,68 @@ def dcc_get_character_bstats(handle: str, idx: str, text: str,
         putdcc(idx, "An error occurred fetching player statistics.")
 
 
+def dcc_compare_players(handle: str, idx: str, text: str,
+                      **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+            putdcc(idx, "Usage !compare <era/tbc/mop> <realm> <player1> <player2>")
+            return
+
+        args_split = args.split()
+        arg_count = len(args_split)
+        if arg_count < 4:
+            if arg_count == 2:
+                version, realm, player1, player2 = DEFAULT_VERSION, DEFAULT_REALM, args_split[0], args_split[1]
+            else:
+                putdcc(idx, "Usage !compare <era/tbc/mop> <realm> <player1> <player2>")
+                return
+        else:
+            version, realm, player1, player2 = args_split
+
+        token = get_valid_blizzard_token()
+
+        player1_data = get_character_data(token, version, realm, player1)
+        player2_data = get_character_data(token, version, realm, player2)
+
+        #test print data player 1
+        putdcc(idx, format_player_compare_irc(player1_data, player2_data))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching player data.")
+
+
+def dcc_get_character_estats(handle: str, idx: str, text: str,
+                      **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+            putdcc(idx, "Usage !stats <era/tbc/mop> <realm> <character>")
+            return
+
+        args_split = args.split()
+        arg_count = len(args_split)
+        if arg_count < 3:
+            if arg_count == 1:
+                version, realm, character = DEFAULT_VERSION, DEFAULT_REALM, args_split[0]
+            else:
+                putdcc(idx, "Usage !stats <era/tbc/mop> <realm> <character>")
+                return
+        else:
+            version, realm, character = args_split
+
+        token = get_valid_blizzard_token()        
+
+        stats = get_chararacter_base_stats(token, version, realm, character)
+        putdcc(idx, format_base_stats_irc(stats))
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching player statistics.")
+
+
 
 
 if 'WOW_BINDS' in globals(): 
@@ -1576,5 +1634,7 @@ WOW_BINDS.append(bind("dcc", "-", "csearch", dcc_search_creatures))
 WOW_BINDS.append(bind("dcc", "-", "creature", dcc_get_creature_summary))
 WOW_BINDS.append(bind("dcc", "-", "rep", dcc_get_reputation))
 WOW_BINDS.append(bind("dcc", "-", "stats", dcc_get_character_bstats))
+WOW_BINDS.append(bind("dcc", "-", "estats", dcc_get_character_estats))
+WOW_BINDS.append(bind("dcc", "-", "compare", dcc_compare_players))
 
 putlog("Loaded wow.py!")
