@@ -1437,6 +1437,40 @@ def dccSetDefaultRealm(handle: str, idx: str, text:str,
         putdcc(idx, "An error has occurred.")
 
 
+def dccGetCreatureSummary(handle: str, idx: str, text: str,
+                          **kwargs):
+    try:
+        args = text.strip().split(maxsplit=1)
+        arg_count = len(args)
+        if arg_count < 2:
+            if arg_count == 1:
+                version, id = DEFAULT_VERSION, args[0]
+            else:
+                putdcc(idx, "Usage .creature <era/tbc/mop> <creature_id>")
+                return
+        else:
+            version, id = args
+
+            
+        id = int(id)
+
+        if not is_valid_version(version):
+            putdcc(idx, f"Invalid version '{version}'.")
+            return
+
+        #putlog(f"Creature Summary: <{nick}> on {chan} - {id} [{version.upper()}]")
+
+        token = get_valid_blizzard_token()
+        summary = get_creature_data(token, version, id)
+
+        putdcc(idx, format_creature_summary(summary))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching creature data.")
+
+
 if 'WOW_BINDS' in globals(): 
     for wbind in WOW_BINDS:
         wbind.unbind()
@@ -1465,5 +1499,6 @@ WOW_BINDS.append(bind("dcc", "-", "version", dccSetDefaultVersion))
 WOW_BINDS.append(bind("dcc", "-", "token", dccTokenDebug))
 WOW_BINDS.append(bind("dcc", "-", "realm", dccSetDefaultRealm))
 WOW_BINDS.append(bind("dcc", "-", "csearch", dccSearchCreatures))
+WOW_BINDS.append(bind("dcc", "-", "creature", dccGetCreatureSummary))
 
 putlog("Loaded wow.py!")
