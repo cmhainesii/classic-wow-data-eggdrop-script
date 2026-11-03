@@ -1292,14 +1292,14 @@ def dccSearchItems(handle: str, idx: str, text: str,
         args = query.split()
         arg_count = len(args)
         if not query:
-            putdcc(idx, "Usage: !search <era/tbc/mop> <item name>")
+            putdcc(idx, "Usage: .search <era/tbc/mop> <item name>")
             return
 
         if arg_count < 2:
             if arg_count == 1:
                 version, search_query = DEFAULT_VERSION, args[0]
             else:
-                putdcc(idx, "Usage: !search <era/tbc/mop> <item name>")
+                putdcc(idx, "Usage: .search <era/tbc/mop> <item name>")
                 return
         else:
             version, search_query = query.split(maxsplit=1)
@@ -1319,12 +1319,43 @@ def dccSearchItems(handle: str, idx: str, text: str,
         putlog(traceback.format_exc())
         putdcc(idx, "An error occurred fetching WoW item data.")
 
+def dccSearchCreatures(handle: str, idx: str, text: str, 
+                       **kwargs):
+    try:
+        args = text.strip().split(maxsplit=1)
+        arg_count = len(args)
+        if arg_count <2:
+            if arg_count == 1:
+                version, creature_name = DEFAULT_VERSION, args[0]
+            else:
+                putdcc(idx, "Usage: .csearch <era/tbc/mop> <creature name>")
+                return
+        else:
+            version, creature_name = args
+
+        if not is_valid_version(version):
+            putdcc(idx, f"Invalid version '{version}'")
+            return
+        
+
+        #putlog(f"Creature Search: <{nick}> on {chan} - {creature_name} [{version.upper()}]")
+
+        token = get_valid_blizzard_token()
+        results = search_creatures(token, version, creature_name)
+
+        putdcc(idx, format_creature_search_irc(results))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching creature data.")
+
 def dccGetPlayerGear(handle: str, idx: str, text: str,
                      **kwargs):
     try:
         query = text.strip()
         if not query:
-            putdcc(idx, "Usage !gear <era/tbc/mop> <realm> <name>")
+            putdcc(idx, "Usage .gear <era/tbc/mop> <realm> <name>")
             return
 
         query = query.split()
@@ -1333,7 +1364,7 @@ def dccGetPlayerGear(handle: str, idx: str, text: str,
             if arg_count == 1:
                 version, realm, name = DEFAULT_VERSION, DEFAULT_REALM, query[0]
             else:
-                putdcc(idx, "Usage !gear <era/tbc/mop> <realm> <name>")
+                putdcc(idx, "Usage .gear <era/tbc/mop> <realm> <name>")
                 return
         else:
             version, realm, name = query[0], query[1], query[2]
@@ -1360,7 +1391,7 @@ def dccSetDefaultVersion(handle: str, idx: str, text: str,
     try:
         args = format_slug(text)
         if not args:
-            putdcc(idx, f"Usage: !version <era/tbc/mop>")
+            putdcc(idx, f"Usage: .version <era/tbc/mop>")
             return
         version = args
         if valid_version(version):
@@ -1393,7 +1424,7 @@ def dccSetDefaultRealm(handle: str, idx: str, text:str,
     try:
         args = format_slug(text)
         if not args:
-            putdcc(idx, "Usage: !realm <realm>")
+            putdcc(idx, "Usage: .realm <realm>")
             return
         realm = args
 
@@ -1433,7 +1464,6 @@ WOW_BINDS.append(bind("dcc", "-", "gear", dccGetPlayerGear))
 WOW_BINDS.append(bind("dcc", "-", "version", dccSetDefaultVersion))
 WOW_BINDS.append(bind("dcc", "-", "token", dccTokenDebug))
 WOW_BINDS.append(bind("dcc", "-", "realm", dccSetDefaultRealm))
-
-#bind("pub", "*", "!movie", pubGetMovie)
+WOW_BINDS.append(bind("dcc", "-", "csearch", dccSearchCreatures))
 
 putlog("Loaded wow.py!")
