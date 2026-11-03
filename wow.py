@@ -582,8 +582,8 @@ def get_character_data(access_token: str, version: str, realm: str, character: s
                        region="us", locale="en_US") -> dict :
     
     realm_slug = format_slug(realm)
-    version = format_slug(version)
-    version_slug = version_to_slug(version)
+    version_key = format_slug(version)
+    version_slug = version_to_slug(version_key)
     if version_slug == "invalid":
         return {"error": "Error: Invalid game version. Must be 'era', 'tbc', or 'mop'"}
     
@@ -857,7 +857,7 @@ def format_reputation_irc(data: dict, search_faction: str) -> list[str]:
 ***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 """
 
-def pubGetPlayerGear(nick: str, user: str, hand: str, chan: str, text: str,
+def pub_get_player_gear(nick: str, user: str, hand: str, chan: str, text: str,
                      **kwargs):
     try:
         query = text.strip()
@@ -890,7 +890,7 @@ def pubGetPlayerGear(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player gear data.")
 
-def pubCharacterInfo(nick: str, user: str, hand: str, chan: str, text: str,
+def pub_character_info(nick: str, user: str, hand: str, chan: str, text: str,
                      **kwargs):
     try:
         query = text.strip()
@@ -925,7 +925,7 @@ def pubCharacterInfo(nick: str, user: str, hand: str, chan: str, text: str,
         putmsg(chan, "An error occurred fetching player character data.")
 
 
-def pubGetRealmStatus(nick: str, user: str, handle: str, chan: str, text: str,
+def pub_get_realm_status(nick: str, user: str, handle: str, chan: str, text: str,
                       **kwargs):
     try:
         args = text.strip()
@@ -955,7 +955,7 @@ def pubGetRealmStatus(nick: str, user: str, handle: str, chan: str, text: str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching realm status.")
 
-def pubSunkenTempleOrder(nick: str, user: str, handle:str, chan: str, text: str,
+def pub_sunken_temple_order(nick: str, user: str, handle:str, chan: str, text: str,
                          **kwargs):
     try:
         putmsg(chan, f"Sunken Temple Statue Order: {SUNKEN_TEMPLE_ORDER}")
@@ -966,7 +966,7 @@ def pubSunkenTempleOrder(nick: str, user: str, handle:str, chan: str, text: str,
         putmsg(chan, "An error occurred.")
 
 
-def pubComparePlayers(nick: str, user: str, handle: str, chan: str, text: str,
+def pub_compare_players(nick: str, user: str, handle: str, chan: str, text: str,
                       **kwargs):
     try:
         args = text.strip()
@@ -1002,7 +1002,7 @@ def pubComparePlayers(nick: str, user: str, handle: str, chan: str, text: str,
         putmsg(chan, "An error occurred fetching player data.")
 
 
-def pubCharacterEStats(nick: str, user: str, hand: str, chan: str, text: str,
+def pub_character_estats(nick: str, user: str, hand: str, chan: str, text: str,
                       **kwargs):
     try:
         args = text.strip()
@@ -1032,7 +1032,7 @@ def pubCharacterEStats(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player statistics.")
 
-def pubCharacterBStats(nick: str, user: str, hand: str, chan: str, text: str,
+def pub_character_bstats(nick: str, user: str, hand: str, chan: str, text: str,
                       **kwargs):
     try:
         args = text.strip()
@@ -1060,10 +1060,10 @@ def pubCharacterBStats(nick: str, user: str, hand: str, chan: str, text: str,
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
-        putmsg(chan, "An error occurred fetching player statistics.")     
+        putmsg(chan, "An error occurred fetching player statistics.")
 
 
-def pubGetReputation(nick:str, user: str, hand: str, chan: str, text: str,
+def pub_get_reputation(nick:str, user: str, hand: str, chan: str, text: str,
                      **kwargs):
     try:
         query = text.strip()
@@ -1105,7 +1105,7 @@ def pubGetReputation(nick:str, user: str, hand: str, chan: str, text: str,
 
 
 
-def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
+def pub_get_item_info(nick: str, user: str, hand: str, chan: str, text: str,
                 **kwargs):
     try:
         args = text.strip()
@@ -1145,7 +1145,7 @@ def pubGetItemInfo(nick: str, user: str, hand: str, chan: str, text: str,
         putmsg(chan, "An error occurred fetching WoW item data.")
 
 
-def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
+def pub_search_items(nick: str, user: str, hand: str, chan: str, text:str,
                    **kwargs):
     try:
         query = text.strip()
@@ -1178,7 +1178,7 @@ def pubSearchItems(nick: str, user: str, hand: str, chan: str, text:str,
         putmsg(chan, "An error occurred fetching WoW item data.")
 
 
-def pubSearchCreatures(nick: str, user: str, hand: str, chan: str, text: str,
+def pub_search_creatures(nick: str, user: str, hand: str, chan: str, text: str,
                        **kwargs):
     try:
         args = text.strip().split(maxsplit=1)
@@ -1210,7 +1210,7 @@ def pubSearchCreatures(nick: str, user: str, hand: str, chan: str, text: str,
         putmsg(chan, "An error occurred fetching creature data.")
 
 
-def pubGetCreatureSummary(nick: str, user: str, hand: str, chan: str, text: str,
+def pub_get_creature_summary(nick: str, user: str, hand: str, chan: str, text: str,
                           **kwargs):
     try:
         args = text.strip().split(maxsplit=1)
@@ -1249,7 +1249,7 @@ def pubGetCreatureSummary(nick: str, user: str, hand: str, chan: str, text: str,
 ***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 """
                 
-def dccGetItemInfo(handle: str, idx: str, text: str,
+def dcc_get_item_info(handle: str, idx: str, text: str,
                    **kwargs):
     try:
         args = text.strip()
@@ -1285,7 +1285,7 @@ def dccGetItemInfo(handle: str, idx: str, text: str,
         putlog(traceback.format_exc())
         putdcc(idx, "An error occurred fetching item data.")
 
-def dccSearchItems(handle: str, idx: str, text: str,
+def dcc_search_items(handle: str, idx: str, text: str,
                    **kwargs):
     try:
         query = text.strip()
@@ -1319,7 +1319,7 @@ def dccSearchItems(handle: str, idx: str, text: str,
         putlog(traceback.format_exc())
         putdcc(idx, "An error occurred fetching WoW item data.")
 
-def dccSearchCreatures(handle: str, idx: str, text: str, 
+def dcc_search_creatures(handle: str, idx: str, text: str, 
                        **kwargs):
     try:
         args = text.strip().split(maxsplit=1)
@@ -1350,7 +1350,7 @@ def dccSearchCreatures(handle: str, idx: str, text: str,
         putlog(traceback.format_exc())
         putdcc(idx, "An error occurred fetching creature data.")
 
-def dccGetPlayerGear(handle: str, idx: str, text: str,
+def dcc_get_player_gear(handle: str, idx: str, text: str,
                      **kwargs):
     try:
         query = text.strip()
@@ -1384,7 +1384,7 @@ def dccGetPlayerGear(handle: str, idx: str, text: str,
         putdcc(idx, "An error occurred fetching player gear data.")
 
 
-def dccSetDefaultVersion(handle: str, idx: str, text: str,
+def dcc_set_default_version(handle: str, idx: str, text: str,
                          **kwargs):
     global DEFAULT_VERSION
     
@@ -1406,7 +1406,7 @@ def dccSetDefaultVersion(handle: str, idx: str, text: str,
         putdcc(idx, "An error has occurred.")
 
 
-def dccTokenDebug(handle: str, idx: str, text: str,
+def dcc_token_debug(handle: str, idx: str, text: str,
                   **kwargs):
     try:
         putdcc(idx, f"Token: {get_valid_blizzard_token()}")
@@ -1416,7 +1416,7 @@ def dccTokenDebug(handle: str, idx: str, text: str,
         putlog(traceback.format_exc())
         putdcc(idx, "An error has occurred.")
 
-def dccSetDefaultRealm(handle: str, idx: str, text:str,
+def dcc_set_default_realm(handle: str, idx: str, text:str,
                        **kwargs):
 
     global DEFAULT_REALM
@@ -1437,7 +1437,7 @@ def dccSetDefaultRealm(handle: str, idx: str, text:str,
         putdcc(idx, "An error has occurred.")
 
 
-def dccGetCreatureSummary(handle: str, idx: str, text: str,
+def dcc_get_creature_summary(handle: str, idx: str, text: str,
                           **kwargs):
     try:
         args = text.strip().split(maxsplit=1)
@@ -1470,6 +1470,76 @@ def dccGetCreatureSummary(handle: str, idx: str, text: str,
         putlog(traceback.format_exc())
         putdcc(idx, "An error occurred fetching creature data.")
 
+def dcc_get_reputation(handle: str, idx: str, text: str,
+                     **kwargs):
+    try:
+        query = text.strip()
+
+        if not query:
+            putdcc(idx, "Usage: .rep <tbc/era/mop> <realm> <character> <faction>")
+            return
+        
+
+        args = query.split()
+        arg_count = len(args)
+        if arg_count < 4:
+            if arg_count == 2:
+                version, realm, character, faction = DEFAULT_VERSION, DEFAULT_REALM, args[0], args[1]
+            else:
+                putdcc(idx, "Usage: .rep <tbc/era/mop> <realm> <character> <faction>")
+                return
+        else:
+            version, realm, character, faction = query.split()
+
+        token = get_valid_blizzard_token()
+
+        #putlog(f"Fetch reputation data - <{nick}> on {chan} - {character} - {faction} [{version.upper()}]")
+
+        data = get_reputation_data(token, version, realm, character)
+        if not data:
+            putdcc(idx, "Sorry no reputation data was found...")
+            return
+
+        putdcc(idx, format_reputation_irc(data, faction))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching reputation data.")
+
+
+def dcc_get_character_bstats(handle: str, idx: str, text: str,
+                      **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+            putdcc(idx, "Usage .stats <era/tbc/mop> <realm> <character>")
+            return
+
+        args_split = args.split()
+        arg_count = len(args_split)
+        if arg_count < 3:
+            if arg_count == 1:
+                version, realm, character = DEFAULT_VERSION, DEFAULT_REALM, args_split[0]
+            else:
+                putdcc(idx, "Usage !stats <era/tbc/mop> <realm> <character>")
+                return
+        else:
+            version, realm, character = args_split
+
+        token = get_valid_blizzard_token()
+
+        #putlog(f"Fetch Player Stats - <{nick}> on {chan} - {character} [{version}]")
+
+        stats = get_chararacter_base_stats(token, version, realm, character, False)
+        putdcc(idx, format_base_stats_irc(stats))
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching player statistics.")
+
+
+
 
 if 'WOW_BINDS' in globals(): 
     for wbind in WOW_BINDS:
@@ -1480,25 +1550,31 @@ if 'WOW_BINDS' in globals():
 TESTING_MASK = "##wowclassic"
 
 WOW_BINDS = list()
-WOW_BINDS.append(bind("pub", "-", "!item", pubGetItemInfo))
-WOW_BINDS.append(bind("pub", "-", "!search", pubSearchItems))
-WOW_BINDS.append(bind("pub", "-", "!character", pubCharacterInfo))
-WOW_BINDS.append(bind("pub", "-", "!gear", pubGetPlayerGear))
-WOW_BINDS.append(bind("pub", "-", "!status", pubGetRealmStatus))
-WOW_BINDS.append(bind("pub", "-", "!compare", pubComparePlayers))
-WOW_BINDS.append(bind("pub", "-", "!stats", pubCharacterEStats))
-WOW_BINDS.append(bind("pub", "-", "!bstats", pubCharacterBStats))
-WOW_BINDS.append(bind("pub", "-", "!rep", pubGetReputation))
-WOW_BINDS.append(bind("pub", "-", "!csearch", pubSearchCreatures))
-WOW_BINDS.append(bind("pub", "-", "!creature", pubGetCreatureSummary))
-WOW_BINDS.append(bind("pub", "-", "!st", pubSunkenTempleOrder))
-WOW_BINDS.append(bind("dcc", "-", "item", dccGetItemInfo))
-WOW_BINDS.append(bind("dcc", "-", "search", dccSearchItems))
-WOW_BINDS.append(bind("dcc", "-", "gear", dccGetPlayerGear))
-WOW_BINDS.append(bind("dcc", "-", "version", dccSetDefaultVersion))
-WOW_BINDS.append(bind("dcc", "-", "token", dccTokenDebug))
-WOW_BINDS.append(bind("dcc", "-", "realm", dccSetDefaultRealm))
-WOW_BINDS.append(bind("dcc", "-", "csearch", dccSearchCreatures))
-WOW_BINDS.append(bind("dcc", "-", "creature", dccGetCreatureSummary))
+
+# Public commands
+WOW_BINDS.append(bind("pub", "-", "!item", pub_get_item_info))
+WOW_BINDS.append(bind("pub", "-", "!search", pub_search_items))
+WOW_BINDS.append(bind("pub", "-", "!character", pub_character_info))
+WOW_BINDS.append(bind("pub", "-", "!gear", pub_get_player_gear))
+WOW_BINDS.append(bind("pub", "-", "!status", pub_get_realm_status))
+WOW_BINDS.append(bind("pub", "-", "!compare", pub_compare_players))
+WOW_BINDS.append(bind("pub", "-", "!stats", pub_character_estats))
+WOW_BINDS.append(bind("pub", "-", "!bstats", pub_character_bstats))
+WOW_BINDS.append(bind("pub", "-", "!rep", pub_get_reputation))
+WOW_BINDS.append(bind("pub", "-", "!csearch", pub_search_creatures))
+WOW_BINDS.append(bind("pub", "-", "!creature", pub_get_creature_summary))
+WOW_BINDS.append(bind("pub", "-", "!st", pub_sunken_temple_order))
+
+# Dcc commands
+WOW_BINDS.append(bind("dcc", "-", "item", dcc_get_item_info))
+WOW_BINDS.append(bind("dcc", "-", "search", dcc_search_items))
+WOW_BINDS.append(bind("dcc", "-", "gear", dcc_get_player_gear))
+WOW_BINDS.append(bind("dcc", "-", "version", dcc_set_default_version))
+WOW_BINDS.append(bind("dcc", "-", "token", dcc_token_debug))
+WOW_BINDS.append(bind("dcc", "-", "realm", dcc_set_default_realm))
+WOW_BINDS.append(bind("dcc", "-", "csearch", dcc_search_creatures))
+WOW_BINDS.append(bind("dcc", "-", "creature", dcc_get_creature_summary))
+WOW_BINDS.append(bind("dcc", "-", "rep", dcc_get_reputation))
+WOW_BINDS.append(bind("dcc", "-", "stats", dcc_get_character_bstats))
 
 putlog("Loaded wow.py!")
