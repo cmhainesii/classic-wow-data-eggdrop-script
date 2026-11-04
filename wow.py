@@ -891,7 +891,7 @@ def pub_get_player_gear(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player gear data.")
 
-def pub_character_info(nick: str, user: str, hand: str, chan: str, text: str,
+def pub_get_character_summary(nick: str, user: str, hand: str, chan: str, text: str,
                      **kwargs):
     try:
         query = text.strip()
@@ -1597,6 +1597,38 @@ def dcc_get_character_estats(handle: str, idx: str, text: str,
         putdcc(idx, "An error occurred fetching player statistics.")
 
 
+def dcc_get_character_summary(handle: str, idx: str, text: str,
+                     **kwargs):
+    try:
+        query = text.strip()
+        if not query:
+            putdcc(idx, "Usage: !character <era/tbc/mop> <realm> <name>")
+            return
+
+        query = query.split()
+        arg_count = len(query)
+        if arg_count < 3:
+            if arg_count == 1:
+                        version = DEFAULT_VERSION
+                        realm = DEFAULT_REALM
+                        name = query[0]
+            else:
+                putdcc(idx, "Usage: !character <era/tbc/mop> <realm> <name>")
+                return
+        else:
+            version, realm, name = query[0], query[1], query[2]
+
+        token = get_valid_blizzard_token()
+        character_info = get_character_data(token, version, realm, name)
+
+        putdcc(idx, f"[{version.upper()}] {format_character_info_irc(character_info)}")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error occurred fetching player character data.")
+
+
 
 
 if 'WOW_BINDS' in globals(): 
@@ -1612,7 +1644,7 @@ WOW_BINDS = list()
 # Public commands
 WOW_BINDS.append(bind("pub", "-", "!item", pub_get_item_info))
 WOW_BINDS.append(bind("pub", "-", "!search", pub_search_items))
-WOW_BINDS.append(bind("pub", "-", "!character", pub_character_info))
+WOW_BINDS.append(bind("pub", "-", "!character", pub_get_character_summary))
 WOW_BINDS.append(bind("pub", "-", "!gear", pub_get_player_gear))
 WOW_BINDS.append(bind("pub", "-", "!status", pub_get_realm_status))
 WOW_BINDS.append(bind("pub", "-", "!compare", pub_compare_players))
@@ -1636,5 +1668,6 @@ WOW_BINDS.append(bind("dcc", "-", "rep", dcc_get_reputation))
 WOW_BINDS.append(bind("dcc", "-", "stats", dcc_get_character_bstats))
 WOW_BINDS.append(bind("dcc", "-", "estats", dcc_get_character_estats))
 WOW_BINDS.append(bind("dcc", "-", "compare", dcc_compare_players))
+WOW_BINDS.append(bind("dcc", "-", "character", dcc_get_character_summary))
 
 putlog("Loaded wow.py!")
