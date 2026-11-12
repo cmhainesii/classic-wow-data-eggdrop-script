@@ -1,3 +1,5 @@
+from http.client import HTTPResponse
+
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -148,6 +150,13 @@ def get_xp_progress(level: int, current_xp: int) -> str:
     pct = math.ceil((current_xp / needed_xp) * 100)
     return f"{pct:.1f}%"
 
+
+"""
+***----------------------------------------------------------------------------
+*** DATA & API FUNCTIONS
+***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+"""
+
 def get_character_data(access_token: str, first_name: str, last_name: str,
                        region="us", locale="en_US") -> dict :
     
@@ -200,6 +209,81 @@ def get_character_data(access_token: str, first_name: str, last_name: str,
             return {"error": f"Character '{char_name}' not found."}
         return {"error": f"HTTP Error fetching character: {e.code}"}
 
+def get_character_equipment(access_token: str, first_name: str, last_name: str, region="us", locale="en_US") -> dict:
+    char_slug = format_slug(f"{first_name}-{last_name}")
+    namespace = f"profile-forever-{region}"
+
+    url = f"https://{region}.api.blizzard.com/profile/wow/character/{char_slug}/equipment?namespace={namespace}&locale={locale}"
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            response: HTTPResponse = response
+            data = json.loads(response.read().decode())
+            equip_data: list[dict[str, Any]]= data.get("equipped_items", [])
+
+            if not equip_data:
+                return {"error": "No equipment data found"}
+            
+            equipment = [
+                {
+                    "slot": piece.get("slot", {}).get("name", "Slot"),
+                    "name": piece.get("name", "Unknown Item")
+                }
+                for piece in equip_data
+            ]
+
+
+            return {
+                "character": f"{first_name} {last_name}",
+                "version": "forever",
+                "equipment": equipment
+            }
+        
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error": f"Character '{first_name} {last_name}' not found."}
+        return {"error": f"HTTP Error fetching character: {e.code}"}
+    except Exception as e:
+        return {"error": f"Unexpected error: {str(e)}"}
+
+"""
+***----------------------------------------------------------------------------
+*** TCL PUBLIC BIND FUNCTIONS
+***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+"""
+
+def pub_get_character_gear(nick: str, user: str, hand: str, chan: str, text: str,
+                     **kwargs):
+    try:
+        query = text.strip()
+        if not query:
+            putmsg(chan, "Usage !gear <first_name> <last_name>")
+            return
+
+        query = query.split()
+        arg_count = len(query)
+        if arg_count != 2:
+                putmsg(chan, "Usage !gear <first_name> <last_name>")
+                return
+        else:
+            first_name, last_name = query
+        
+        putlog(f"[Forever] Gear Lookup <{nick}> {chan} - {first_name} {last_name}")
+
+        token = get_valid_blizzard_token()
+        equipment = get_character_equipment(token, first_name, last_name)
+
+
+        for line in format_character_equipment_irc(equipment):
+            putmsg(chan, line)
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching player gear data.")
+
 
 def pub_get_character_summary(nick: str, user: str, hand: str, chan: str, text: str,
                      **kwargs):
@@ -229,6 +313,44 @@ def pub_get_character_summary(nick: str, user: str, hand: str, chan: str, text: 
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player character data.")
 
+"""
+***----------------------------------------------------------------------------
+*** IRC FORMATTING FUNCTIONS
+***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+"""
+
+def format_character_equipment_irc(data: dict) -> list[str]:
+    if not data or "error" in data:
+        return [data.get("error", "Error: Invalid equipment data.")]
+    
+    equipment = data.get("equipment")
+    if not equipment:
+        return ["No equipment items found."]
+    
+    items = [f"{item['slot']}: {item['name']}" for item in equipment]
+
+    # Pack items into lines under 350 characters for IRC buffers
+    lines = []
+    current_line = []
+    current_len = 0
+    MAX_LEN = 350
+
+    for item in items:
+        # 3 accounts for the " | " separator
+        added_len = len(item) + (3 if current_line else 0)
+        if current_len + added_len > MAX_LEN:
+            lines.append(" | ".join(current_line))
+            current_line = [item]
+            current_len = len(item)
+        else:
+            current_line.append(item)
+            current_len += added_len
+
+    if current_line:
+        lines.append(" | ".join(current_line))
+
+    return lines
+
 def format_character_info_irc(info: dict) -> str:
     if not info or "error" in info:
         return "Error: Invalid character data."
@@ -247,6 +369,7 @@ WOW_BINDS = list()
 
 # Public commands
 WOW_BINDS.append(bind("pub", "-", "!character", pub_get_character_summary))
+WOW_BINDS.append(bind("pub", "-", "!gear", pub_get_character_gear))
 
 
 # Dcc commands
