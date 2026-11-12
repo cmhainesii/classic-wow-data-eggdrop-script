@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+# Exit immediately if a command exits with a non-zero status,
+# treat unset variables as an error, and fail on pipe errors.
+set -euo pipefail
+
+# ------------------------------------------------------------------------------
+# Trick 1: Absolute Script Location Resolver
+# Resolves the directory where THIS bash script is stored, handling symlinks.
+# ------------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+
+# Target file relative to the script directory
+SOURCE_FILE="${SCRIPT_DIR}/forever.py"
+
+# Target destination directory (~ expands automatically)
+TARGET_DIR="${HOME}/eggdrop/scripts"
+
+# ------------------------------------------------------------------------------
+# Trick 2: Safe Checks & Execution
+# ------------------------------------------------------------------------------
+# Verify the source file actually exists before doing anything
+if [[ ! -f "${SOURCE_FILE}" ]]; then
+    printf '[\e[31mERROR\e[0m] Source file not found: %s\n' "${SOURCE_FILE}" >&2
+    exit 1
+fi
+
+# Ensure the target directory exists (-p creates parents quietly if needed)
+mkdir -p "${TARGET_DIR}"
+
+# ------------------------------------------------------------------------------
+# Trick 3: Atomic / Backup Copying
+# Options:
+#  -v : Verbose output showing the exact transfer path
+#  -p : Preserve original timestamps and file permissions
+#  -b : Automatic backup! If wow.py already exists in ~/eggdrop/scripts,
+#       cp creates a backup (e.g. wow.py~) so you never accidentally overwrite.
+# ------------------------------------------------------------------------------
+printf '[\e[32mINFO\e[0m] Copying %s -> %s\n' "${SOURCE_FILE}" "${TARGET_DIR}"
+cp -vp "${SOURCE_FILE}" "${TARGET_DIR}/"
+
+printf '[\e[32mSUCCESS\e[0m] Done!\n'

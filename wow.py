@@ -2,7 +2,7 @@ from http.client import HTTPResponse
 import math
 import json
 import base64
-from re import M
+
 from typing import Any
 import urllib.error
 import urllib.parse
@@ -108,6 +108,8 @@ def to_wowhead_version(version: str) -> str:
         return "classic"
     elif version == "mop":
         return "mop-classic"
+    elif version == "forever":
+        return "forever"
     else:
         return "invalid"
 
@@ -124,7 +126,7 @@ def get_wowhead_creature_link(id: str, version: str) -> str:
 
 
 def is_valid_version(version: str) -> bool:
-    VALID_VERSIONS = { "era", "tbc", "mop" }
+    VALID_VERSIONS = { "era", "tbc", "mop", "forever" }
 
     return version in VALID_VERSIONS
 
@@ -163,6 +165,8 @@ def version_to_slug(version: str):
         return "classicann"
     elif version == "mop":
         return "classic"
+    elif version == "forever":
+        return "forever"
     else:
         return "invalid"
 
@@ -591,7 +595,11 @@ def get_character_data(access_token: str, version: str, realm: str, character: s
     char_name = format_slug(character)
     namespace = f"profile-{version_slug}-{region}"
 
-    url = f"https://{region}.api.blizzard.com/profile/wow/character/{realm_slug}/{char_name}?namespace={namespace}&locale={locale}"
+    if version == "forever":
+        url = f"https://{region}.api.blizzard.com/profile/wow/character/{char_name}?namespace={namespace}&locale={locale}"
+    else:
+        url = f"https://{region}.api.blizzard.com/profile/wow/character/{realm_slug}/{char_name}?namespace={namespace}&locale={locale}"
+
     req = urllib.request.Request(url)
     req.add_header("Authorization", f"Bearer {access_token}")
 
@@ -789,10 +797,10 @@ def format_player_compare_irc(player1: dict, player2: dict) -> str:
 
 
 def format_character_info_irc(info: dict) -> str:
-    if not info or "error" in info:
-        return "Error: Invalid character data."
+if not info or "error" in info:
+    return "Error: Invalid character data."
 
-    return f"{info['name']} ({info['gender']}) Lvl {info['level']} ({info['xp_progress_pct']}) {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
+return f"{info['name']} ({info['gender']}) Lvl {info['level']} ({info['xp_progress_pct']}) {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
     
 
 def format_character_equipment_irc(data: dict) -> list[str]:
