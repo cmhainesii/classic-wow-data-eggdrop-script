@@ -1,4 +1,5 @@
 from http.client import HTTPResponse
+from typing import Any
 
 import urllib.parse
 import urllib.request
@@ -26,7 +27,7 @@ except ImportError:
 
 _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
 MAX_LEVEL = 60
-
+VERSION = "forever"
 
 FOREVER_XP_TABLE = {
     1: 400, 2: 900, 3: 1400, 4: 2100, 5: 2800, 6: 3600, 7: 4500, 8: 5400, 9: 6500, 10: 7600,
@@ -163,7 +164,7 @@ def get_character_data(access_token: str, first_name: str, last_name: str,
     
     
     char_name = f"{format_slug(first_name)}-{format_slug(last_name)}"
-    namespace = f"profile-forever-{region}"
+    namespace = f"profile-{VERSION}-{region}"
 
     url = f"https://{region}.api.blizzard.com/profile/wow/character/{char_name}?namespace={namespace}&locale={locale}"
     
@@ -211,7 +212,7 @@ def get_character_data(access_token: str, first_name: str, last_name: str,
 
 def get_character_equipment(access_token: str, first_name: str, last_name: str, region="us", locale="en_US") -> dict:
     char_slug = format_slug(f"{first_name}-{last_name}")
-    namespace = f"profile-forever-{region}"
+    namespace = f"profile-{VERSION}-{region}"
 
     url = f"https://{region}.api.blizzard.com/profile/wow/character/{char_slug}/equipment?namespace={namespace}&locale={locale}"
     req = urllib.request.Request(url)
@@ -247,6 +248,53 @@ def get_character_equipment(access_token: str, first_name: str, last_name: str, 
         return {"error": f"HTTP Error fetching character: {e.code}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
+
+
+def search_creatures(access_token: str, creature: str, max_results=10,
+                     region="us", locale="en_US") -> dict:
+
+    query = urllib.parse.quote(creature)
+    
+    namespace = f"static-{VERSION}-{region}"
+
+    url = f"https://{region}.api.blizzard.com/data/wow/search/creature?namespace={namespace}&name.{locale}={query}&orderby=id&_page=1&locale={locale}"
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    search_terms = creature.lower().split()
+    creatures_found = []
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            response: HTTPResponse = response
+            data: dict[str, Any] = json.loads(response.read().decode())
+
+            results = data.get("results", [])
+
+            if not results:
+                return {"error": "No creatures found."}
+
+            for item in results:
+                data = item.get("data", {})
+                id = data.get("id")
+                name = data.get("name", {}).get(locale, "Unknown")
+
+                if id and all(term in name.lower() for term in search_terms):
+                    creatures_found.append({"id": id, "name": name})
+                if len(creatures_found) > max_results:
+                    break
+
+            return {
+                "query": query,
+                "results": creatures_found
+            } 
+    
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error": "Error: Creature search API endpoint not found."}
+        return {"error": f"HTTP Error fetching creature data: {e.code}"}
+    except Exception as e:
+        return {"error": str(e)}
 
 """
 ***----------------------------------------------------------------------------
@@ -313,6 +361,30 @@ def pub_get_character_summary(nick: str, user: str, hand: str, chan: str, text: 
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player character data.")
 
+
+def pub_search_creatures(nick: str, user: str, hand: str, chan: str, text: str,
+                       **kwargs):
+    try:
+        creature_name = format_slug(text)
+        
+        if not creature_name:
+            putmsg(chan, "Usage: !csearch <creature name>")
+            return
+        
+        
+
+        putlog(f"Creature Search: <{nick}> on {chan} - {creature_name} [{VERSION.upper()}]")
+
+        token = get_valid_blizzard_token()
+        results = search_creatures(token, creature_name)
+
+        putmsg(chan, format_creature_search_irc(results))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching creature data.")
+
 """
 ***----------------------------------------------------------------------------
 *** IRC FORMATTING FUNCTIONS
@@ -357,6 +429,17 @@ def format_character_info_irc(info: dict) -> str:
 
     return f"{info['name']} ({info['gender']}) Lvl {info['level']} ({info['xp_progress_pct']}) {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
 
+def format_creature_search_irc(data: dict) ->str:
+    if not data or "error" in data:
+        return f"Error: {data.get('error', 'Search failed.')}"
+
+    results = data.get("results", [])
+    if not results:
+        return f"No items found for '{data.get('query', '')}"
+
+    formatted_items = [f"[{item['id']}] {item['name']}" for item in results]
+    return " | ".join(formatted_items)
+
 
 
 if 'WOW_BINDS' in globals(): 
@@ -370,6 +453,7 @@ WOW_BINDS = list()
 # Public commands
 WOW_BINDS.append(bind("pub", "-", "!character", pub_get_character_summary))
 WOW_BINDS.append(bind("pub", "-", "!gear", pub_get_character_gear))
+WOW_BINDS.append(bind("pub", "-", "!csearch", pub_search_creatures))
 
 
 # Dcc commands
