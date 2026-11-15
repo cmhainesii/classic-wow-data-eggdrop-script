@@ -109,16 +109,12 @@ def to_wowhead_version(version: str) -> str:
     else:
         return "invalid"
 
-def get_wowhead_item_link(id: str, version: str) -> str:
-    ver = to_wowhead_version(version)
-    if ver == "invalid":
-        return "invalid"
-    return f"{WOWHEAD_BASE_URL}/{ver}/item={id}"
+def get_wowhead_item_link(id: str) -> str:
+    return f"{WOWHEAD_BASE_URL}/{VERSION}/item={id}"
 
 
-def get_wowhead_creature_link(id: str, version: str) -> str:
-    ver = to_wowhead_version(version)
-    return f"{WOWHEAD_BASE_URL}/{ver}/npc={id}/"
+def get_wowhead_creature_link(id: str) -> str:
+    return f"{WOWHEAD_BASE_URL}/{VERSION}/npc={id}/"
 
 
 def is_valid_version(version: str) -> bool:
@@ -296,6 +292,190 @@ def search_creatures(access_token: str, creature: str, max_results=10,
     except Exception as e:
         return {"error": str(e)}
 
+
+def get_creature_data(access_token: str, creature_id: str, region="us", locale="en_US") -> dict:
+    
+    namespace = f"static-{VERSION}-{region}"
+
+    url = f"https://{region}.api.blizzard.com/data/wow/creature/{creature_id}?namespace={namespace}&locale={locale}"
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            response: HTTPResponse = response
+
+            data: dict[str, Any] = json.loads(response.read().decode())
+
+            c_id = data.get("id", creature_id)
+            c_name = data.get("name", "Unknown")
+            t_name = data.get("type", {}).get("name", "Unknown")
+            family = data.get("family", {}).get("name", "Unknown")
+            tameable = "Yes" if data.get("is_tameable") else "No"
+            wowhead_url = get_wowhead_creature_link(creature_id)
+
+            return {
+                "id": c_id,
+                "name": c_name,
+                "type": t_name,
+                "family": family,
+                "tameable": tameable,
+                "wowhead_url": wowhead_url
+            }
+
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error":"Error: Creature not found."}
+        return {"error": f"HTTP Error fetching creature: {e.code}"}
+
+def get_item_data(access_token: str, item_id: str, region="us", locale="en_US") -> dict :
+    
+    namespace = f"static-{VERSION}-{region}"
+    url = f"https://{region}.api.blizzard.com/data/wow/item/{item_id}?namespace={namespace}&locale={locale}"
+
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            resp: HTTPResponse = response
+            data: dict[str, Any] = json.loads(resp.read().decode())
+
+            name = data.get("name", "Unknown Item")
+            level = data.get("level", 0)
+            id = data.get("id", 0)
+            req_level = data.get("required_level", 0)
+            item_class = data.get("item_class", {}).get("name", "Unknown Class")
+            item_subclass = data.get("item_subclass", {}).get("name", "Unknown Subclass")
+            purchase_price = format_with_gold(data.get("purchase_price", 0))
+            wowhead_url = get_wowhead_item_link(id)
+
+            return {
+                "name": name,
+                "level": level,
+                "id": id,
+                "req_level": req_level,
+                "item_class": item_class,
+                "item_subclass": item_subclass,
+                "purchase_price": purchase_price,
+                "wowhead_url": wowhead_url,
+            }
+
+            # return(
+            #     f"Item Name: {name} (ID: {id}) | "
+            #     f"Level: {level} | Req. Level: {req_level} | "
+            #     f"Type: {item_class} ({item_subclass}) | "
+            #     f"Vendor: {purchase_price}"
+            # )
+
+
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error": "Error: Item not found."}
+        return {"error": f"HTTP Error fetching character: {e.code}"}
+
+
+def search_items(access_token: str, item_name: str, max_results: int = 5,
+        region="us", locale="en_US") -> dict:
+    
+    query = urllib.parse.quote(item_name)
+    namespace = f"static-{VERSION}-{region}"
+    
+    url = f"https://{region}.api.blizzard.com/data/wow/search/item?namespace={namespace}&name.en_US={query}&orderby=id&_page=1&locale={locale}" 
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    search_terms = item_name.lower().split()
+    items_found = []
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            json_data = json.loads(response.read().decode())
+
+            results = json_data.get("results", [])
+            if not results:
+                return {"error": "No items found."}
+
+            for item in results:
+                data = item.get("data", {})
+                item_id = data.get("id")
+                title = data.get("name", {}).get(locale, "Unknown Item")
+
+                # Added client-side AND filter just like search_creatures
+                if item_id and all(term in title.lower() for term in search_terms):
+                    items_found.append({"id": item_id, "name": title})
+
+                if len(items_found) >= max_results:
+                    break
+                
+            if not items_found:
+                return {"error": f"No items found for '{item_name}'."}
+
+            return {
+                "query": item_name,
+                "results": items_found
+            }
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error": "Error: Item search endpoint not found."}
+        return {"error": f"HTTP Error fetching items: {e.code}"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def get_chararacter_base_stats(
+        access_token: str,
+        first_name: str,
+        last_name: str,
+        effective=True,
+        region="us",
+        locale="en_US"
+        ) -> dict:
+
+    
+    
+    
+    character_slug = format_slug(f"{first_name}-{last_name}")
+    category = "effective" if effective else "base"
+
+    
+    namespace = f"profile-{VERSION}-{region}"
+
+    url = f"https://{region}.api.blizzard.com/profile/wow/character/{character_slug}/statistics?namespace={namespace}&locale={locale}"
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            response: HTTPResponse = response
+            data: dict[str, Any] = json.loads(response.read().decode())
+
+            name = character_slug
+            strength = data.get("strength", {}).get(category, 0)
+            agility = data.get("agility", {}).get(category, 0)
+            stamina = data.get("stamina", {}).get(category, 0)
+            intellect = data.get("intellect", {}).get(category, 0)
+            spirit = data.get("spirit", {}).get(category, 0)
+            armor = data.get("armor", {}).get(category, 0)
+
+            return {
+                "name": f"{first_name.capitalize()} {last_name.capitalize()}",
+                "strength": strength,
+                "agility": agility,
+                "stamina": stamina,
+                "intellect": intellect,
+                "spirit": spirit,
+                "armor": armor,
+                "effective": effective
+            }
+
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"error": "Error: Character statistics not found."}
+        return {"error": "HTTP Error fetching character statistics."}
+    except Exception as e:
+        return {"error": str(e)}
+
 """
 ***----------------------------------------------------------------------------
 *** TCL PUBLIC BIND FUNCTIONS
@@ -318,7 +498,7 @@ def pub_get_character_gear(nick: str, user: str, hand: str, chan: str, text: str
         else:
             first_name, last_name = query
         
-        putlog(f"[Forever] Gear Lookup <{nick}> {chan} - {first_name} {last_name}")
+        putlog(f"[{VERSION.upper()}] Gear Lookup <{nick}> {chan} - {first_name} {last_name}")
 
         token = get_valid_blizzard_token()
         equipment = get_character_equipment(token, first_name, last_name)
@@ -354,7 +534,7 @@ def pub_get_character_summary(nick: str, user: str, hand: str, chan: str, text: 
         token = get_valid_blizzard_token()
         character_info = get_character_data(token, first_name, last_name)
 
-        putmsg(chan, f"[Forever] {format_character_info_irc(character_info)}")
+        putmsg(chan, f"[{VERSION.upper()}] {format_character_info_irc(character_info)}")
 
     except Exception as e:
         putlog(f"wow.py Script Error:{e}")
@@ -384,6 +564,171 @@ def pub_search_creatures(nick: str, user: str, hand: str, chan: str, text: str,
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching creature data.")
+
+
+def pub_get_creature_summary(nick: str, user: str, hand: str, chan: str, text: str,
+                          **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+                putmsg(chan, "Usage !creature <creature_id>")
+                return
+        id = args
+
+
+        putlog(f"Creature Summary: <{nick}> on {chan} - {id} [{VERSION.upper()}]")
+
+        token = get_valid_blizzard_token()
+        summary = get_creature_data(token, id)
+
+        putmsg(chan, format_creature_summary(summary))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching creature data.")
+
+
+def pub_get_item_summary(nick: str, user: str, hand: str, chan: str, text: str,
+                **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+            putmsg(chan, "Usage: !item <item id>")
+            return
+
+        
+        item_id = args
+
+        if not item_id.isdigit():
+            putmsg(chan, "Item ID must be numeric. Use !search to find the item ID.")
+            return
+
+
+        putlog(f"Item Lookup <{nick}> on {chan} -  {item_id} [{VERSION.upper()}]")
+        
+        token = get_valid_blizzard_token()
+        item_data = get_item_data(token, item_id)
+        
+
+
+        putmsg(chan, format_item_data_irc(item_data))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching WoW item data.")
+
+
+def pub_search_items(nick: str, user: str, hand: str, chan: str, text:str,
+                   **kwargs):
+    try:
+        query = text.strip()
+        
+        if not query:
+            putmsg(chan, "Usage: !search <item name>")
+            return        
+
+        putlog(f"Item search: <{nick}> {chan} - {query} [{VERSION.upper()}]")
+
+        token = get_valid_blizzard_token()
+        results = search_items(token, query)
+
+        putmsg(chan, format_item_search_irc(results))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching WoW item data.")
+
+
+def pub_get_character_bstats(nick: str, user: str, hand: str, chan: str, text: str,
+                      **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+            putmsg(chan, "Usage !stats <first_name> <last_name>")
+            return
+
+        args_split = args.split()
+        arg_count = len(args_split)
+        if arg_count != 2:
+            putmsg(chan, "Usage !stats <first_name> <last_name>")
+            return
+        first_name, last_name = args_split
+
+        token = get_valid_blizzard_token()
+
+        putlog(f"Fetch Player Stats - <{nick}> on {chan} - {first_name.capitalize()} {last_name.capitalize()} [{VERSION.upper()}]")
+
+        stats = get_chararacter_base_stats(token, first_name, last_name, False)
+        putmsg(chan, format_base_stats_irc(stats))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching player statistics.")
+
+
+def pub_get_character_estats(nick: str, user: str, hand: str, chan: str, text: str,
+                      **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+            putmsg(chan, "Usage !stats <first_name> <last_name>")
+            return
+
+        args_split = args.split()
+        arg_count = len(args_split)
+        if arg_count != 2:
+            putmsg(chan, "Usage !stats <first_name> <last_name>")
+            return
+        else:
+            first_name, last_name = args_split
+
+        token = get_valid_blizzard_token()
+
+        putlog(f"Fetch Player Stats - <{nick}> on {chan} - {first_name.capitalize()} {last_name.capitalize()} [{VERSION.upper()}]")
+
+        stats = get_chararacter_base_stats(token, first_name, last_name)
+        putmsg(chan, format_base_stats_irc(stats))
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching player statistics.")
+
+
+def pub_compare_players(nick: str, user: str, handle: str, chan: str, text: str,
+                      **kwargs):
+    try:
+        args = text.strip()
+        if not args:
+            putmsg(chan, "Usage !compare <first_name1> <last_name1> <first_name2> <last_name2>")
+            return
+
+        args_split = args.split()
+        arg_count = len(args_split)
+        if arg_count != 4:
+            putmsg(chan, "Usage !compare <first_name1> <last_name1> <first_name2> <last_name2>")
+            return
+        first_name1, last_name1, first_name2, last_name2 = args_split
+
+        token = get_valid_blizzard_token()
+        name1 = f"{first_name1.capitalize()} {last_name1.capitalize()}"
+        name2 = f"{first_name2.capitalize()} {last_name2.capitalize()}"
+
+        putlog(f"Player Comparison - <{nick}> on {chan} - Comparing {name1} and {name2}")
+
+        player1_data = get_character_data(token, first_name1, last_name1)
+        player2_data = get_character_data(token, first_name2, last_name2)
+
+        #test print data player 1
+        putmsg(chan, format_player_compare_irc(player1_data, player2_data))
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching player data.")
 
 """
 ***----------------------------------------------------------------------------
@@ -441,6 +786,91 @@ def format_creature_search_irc(data: dict) ->str:
     return " | ".join(formatted_items)
 
 
+def format_creature_summary(data: dict) -> str:
+    if not data or "error" in data:
+        return f"Error: {data.get('error', 'Lookup failed.')}"
+
+    return(
+        f"Name: {data.get("name")} | Type: {data.get("type")} | Family: {data.get("family")} | Tameable: {data.get("tameable")} | "
+        f"{data.get("wowhead_url")}"
+    )
+
+def format_item_data_irc(info: dict):
+    if not info or "error" in info:
+        return "Error: Invalid item data."
+    return (
+        f"Item Name: {info.get("name")} (ID: {info.get("id")}) | "
+        f"Level: {info.get("level")} | Req. Level: {info.get("req_level")} | "
+        f"{info.get("wowhead_url")}"
+
+    )
+
+def format_item_search_irc(data: dict) -> str:
+    if not data or "error" in data:
+        return f"Error: {data.get('error', 'Search failed.')}"
+
+    results = data.get("results", [])
+    if not results:
+        return f"No items found for '{data.get('query', '')}"
+
+    formatted_items = [f"[{item['id']}] {item['name']}" for item in results]
+    return " | ".join(formatted_items)
+
+
+def format_base_stats_irc(data: dict) -> str:
+
+    if not data or "error" in data:
+        return "Error: Invalid data."
+
+    prefix = "" if data.get("effective") else " Base"
+    return f"[{VERSION.upper()}] - {data['name']}{prefix} Stats: Str: {data['strength']} | Agi: {data['agility']} | Sta: {data['stamina']} | Int: {data['intellect']} | Spt: {data['spirit']} | Arm: {data['armor']}"
+
+
+def format_player_compare_summary(player: dict):
+    if not player or "error" in player:
+        return "Error: Invalid player data"
+
+    name = player.get("name")
+    gender = player.get("gender")
+    level = player.get("level")
+    race = player.get("race")
+    cls = player.get("class")
+    ilvl = player.get("ilvl")
+    xp_pct = player.get("xp_progress_pct")
+
+    return f"{name} (Lvl {level} ({xp_pct}%) {race} {cls} | {ilvl} iLvl) ({gender})"
+
+
+def format_player_compare_irc(player1: dict, player2: dict) -> str:
+    if not player1 or not player2:
+        return "Error: Internal error. Invalid player data."
+    if "error" in player1:
+        return f"{player1.get('error', 'Error: MissingNo')}"
+    elif "error" in player2:
+        return f"{player2.get('error', 'Error: MissingNo2')}"
+
+    p1_summary = format_player_compare_summary(player1)
+    p2_summary = format_player_compare_summary(player2)
+
+    lvl1 = int(player1.get("level") or 0)
+    lvl2 = int(player2.get("level") or 0)
+    diff_level = lvl1 - lvl2
+
+    ilvl1 = int(player1.get("ilvl") or 0)
+    ilvl2 = int(player2.get("ilvl") or 0)
+    diff_ilvl = ilvl1 - ilvl2
+    
+    name1 = player1.get("name", "Player 1")
+    name2 = player2.get("name", "Player 2")
+    
+    return f"[{VERSION.upper()}] {p1_summary} vs {p2_summary} | Delta ({name1} vs {name2}): {diff_level:+d} Lvl, {diff_ilvl:+d} iLvl"
+
+
+"""
+***----------------------------------------------------------------------------
+*** Bot Function Bindings Machine
+***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+"""
 
 if 'WOW_BINDS' in globals(): 
     for wbind in WOW_BINDS:
@@ -454,6 +884,12 @@ WOW_BINDS = list()
 WOW_BINDS.append(bind("pub", "-", "!character", pub_get_character_summary))
 WOW_BINDS.append(bind("pub", "-", "!gear", pub_get_character_gear))
 WOW_BINDS.append(bind("pub", "-", "!csearch", pub_search_creatures))
+WOW_BINDS.append(bind("pub", "-", "!creature", pub_get_creature_summary))
+WOW_BINDS.append(bind("pub", "-", "!item", pub_get_item_summary))
+WOW_BINDS.append(bind("pub", "-", "!search", pub_search_items))
+WOW_BINDS.append(bind("pub", "-", "!bstats", pub_get_character_bstats))
+WOW_BINDS.append(bind("pub", "-", "!stats", pub_get_character_estats))
+WOW_BINDS.append(bind("pub", "-", "!compare", pub_compare_players))
 
 
 # Dcc commands
