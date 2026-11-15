@@ -18,6 +18,7 @@ from eggdrop.tcl import putmsg, putlog, putdcc
 
 
 
+
 # Attempt to import client and secret via .env
 try:
     from dotenv import load_dotenv
@@ -476,6 +477,42 @@ def get_chararacter_base_stats(
     except Exception as e:
         return {"error": str(e)}
 
+
+
+def get_forever_realm_status(access_token: str, region: str = "us", locale: str = "en_US") -> dict:
+    namespace = f"dynamic-forever-{region}"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    ruleset_ids = [1, 2, 3, 15]
+    statuses = []
+
+    try:
+        for rid in ruleset_ids:
+            url = f"https://{region}.api.blizzard.com/data/wow/ruleset/{rid}?namespace={namespace}&locale={locale}"
+            req = urllib.request.Request(url, headers=headers)
+            
+            with urllib.request.urlopen(req) as response:
+                data = json.loads(response.read().decode())
+                statuses.append({
+                    "id": data.get("id"),
+                    "name": data.get("name"),
+                    "status": data.get("status", {}).get("name", "Unknown")
+                })
+
+        # Format into a single compact line for IRC
+        # e.g., "PvP: Up | Normal: Up | Roleplay: Up | Roleplay PvP: Up"
+        summary_str = " | ".join([f"{s['name']}: {s['status']}" for s in statuses])
+
+        return {
+            "version": "Forever",
+            "rulesets": statuses,
+            "irc_summary": summary_str
+        }
+
+    except urllib.error.HTTPError as e:
+        return {"error": f"HTTP Error {e.code}"}
+    except Exception as e:
+        return {"error": str(e)}
+
 """
 ***----------------------------------------------------------------------------
 *** TCL PUBLIC BIND FUNCTIONS
@@ -730,6 +767,48 @@ def pub_compare_players(nick: str, user: str, handle: str, chan: str, text: str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player data.")
 
+
+def pub_get_forever_realm_status(nick: str, user: str, handle: str, chan: str, text: str,
+                                 **kwargs):
+    try:
+        args_split = text.strip().split()
+        if len(args_split) > 1:
+            putmsg(chan, "Usage: !forever [region] (e.g., !forever or !forever eu)")
+            return
+
+        region = args_split[0].lower() if args_split else "us"
+
+        putlog(f"WoW Forever Status Query - <{nick}> on {chan} - region: {region}")
+
+        token = get_valid_blizzard_token()
+        info = get_forever_realm_status(token, region=region)
+
+        if "error" in info:
+            putmsg(chan, f"Error: {info['error']}")
+            return
+
+        putmsg(chan, f"[{info['version']} - {region.upper()}] {info['irc_summary']}")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred fetching WoW Forever status.")
+"""
+***----------------------------------------------------------------------------
+*** DCC BIND FUNCTIONS
+***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+"""
+
+def dcc_token_debug(handle: str, idx: str, text: str,
+                  **kwargs):
+    try:
+        putdcc(idx, f"Token: {get_valid_blizzard_token()}")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putdcc(idx, "An error has occurred.")
+
 """
 ***----------------------------------------------------------------------------
 *** IRC FORMATTING FUNCTIONS
@@ -890,6 +969,9 @@ WOW_BINDS.append(bind("pub", "-", "!search", pub_search_items))
 WOW_BINDS.append(bind("pub", "-", "!bstats", pub_get_character_bstats))
 WOW_BINDS.append(bind("pub", "-", "!stats", pub_get_character_estats))
 WOW_BINDS.append(bind("pub", "-", "!compare", pub_compare_players))
+WOW_BINDS.append(bind("pub", "-", "!status", pub_get_forever_realm_status))
+
+WOW_BINDS.append(bind("dcc", "-", "token", dcc_token_debug))
 
 
 # Dcc commands
