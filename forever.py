@@ -53,7 +53,7 @@ CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID", MY_CLIENT_ID )
 CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET", MY_SECRET)
 
 
-
+SUNKEN_TEMPLE_ORDER = "S N SW SE NW NE"
 WOWHEAD_BASE_URL = "https://wowhead.com"
 
 """
@@ -793,6 +793,17 @@ def pub_get_forever_realm_status(nick: str, user: str, handle: str, chan: str, t
         putlog(f"wow.py Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW Forever status.")
+
+
+def pub_sunken_temple_order(nick: str, user: str, handle:str, chan: str, text: str,
+                         **kwargs):
+    try:
+        putmsg(chan, f"Sunken Temple Statue Order: {SUNKEN_TEMPLE_ORDER}")
+
+    except Exception as e:
+        putlog(f"wow.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error occurred.")
 """
 ***----------------------------------------------------------------------------
 *** DCC BIND FUNCTIONS
@@ -970,6 +981,7 @@ WOW_BINDS.append(bind("pub", "-", "!bstats", pub_get_character_bstats))
 WOW_BINDS.append(bind("pub", "-", "!stats", pub_get_character_estats))
 WOW_BINDS.append(bind("pub", "-", "!compare", pub_compare_players))
 WOW_BINDS.append(bind("pub", "-", "!status", pub_get_forever_realm_status))
+WOW_BINDS.append(bind("pub", "-", "!st", pub_sunken_temple_order))
 
 WOW_BINDS.append(bind("dcc", "-", "token", dcc_token_debug))
 
