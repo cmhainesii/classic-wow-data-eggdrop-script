@@ -29,6 +29,7 @@ except ImportError:
 _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
 MAX_LEVEL = 60
 VERSION = "forever"
+SCRIPT_NAME = "forever.py"
 
 FOREVER_XP_TABLE = {
     1: 400, 2: 900, 3: 1400, 4: 2100, 5: 2800, 6: 3600, 7: 4500, 8: 5400, 9: 6500, 10: 7600,
@@ -155,7 +156,7 @@ def get_xp_progress(level: int, current_xp: int) -> str:
 ***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 """
 
-def get_character_data(access_token: str, first_name: str, last_name: str,
+def get_character_summary(access_token: str, first_name: str, last_name: str,
                        region="us", locale="en_US") -> dict :
     
     
@@ -545,7 +546,7 @@ def pub_get_character_gear(nick: str, user: str, hand: str, chan: str, text: str
             putmsg(chan, line)
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player gear data.")
 
@@ -569,12 +570,12 @@ def pub_get_character_summary(nick: str, user: str, hand: str, chan: str, text: 
         putlog(f"Character lookup <{nick}> on {chan} - {first_name} {last_name}")
 
         token = get_valid_blizzard_token()
-        character_info = get_character_data(token, first_name, last_name)
+        character_info = get_character_summary(token, first_name, last_name)
 
-        putmsg(chan, f"[{VERSION.upper()}] {format_character_info_irc(character_info)}")
+        putmsg(chan, f"[{VERSION.upper()}] {format_character_summary_irc(character_info)}")
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player character data.")
 
@@ -598,7 +599,7 @@ def pub_search_creatures(nick: str, user: str, hand: str, chan: str, text: str,
         putmsg(chan, format_creature_search_irc(results))
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching creature data.")
 
@@ -621,7 +622,7 @@ def pub_get_creature_summary(nick: str, user: str, hand: str, chan: str, text: s
         putmsg(chan, format_creature_summary(summary))
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching creature data.")
 
@@ -652,7 +653,7 @@ def pub_get_item_summary(nick: str, user: str, hand: str, chan: str, text: str,
         putmsg(chan, format_item_data_irc(item_data))
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW item data.")
 
@@ -674,7 +675,7 @@ def pub_search_items(nick: str, user: str, hand: str, chan: str, text:str,
         putmsg(chan, format_item_search_irc(results))
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW item data.")
 
@@ -702,7 +703,7 @@ def pub_get_character_bstats(nick: str, user: str, hand: str, chan: str, text: s
         putmsg(chan, format_base_stats_irc(stats))
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player statistics.")
 
@@ -730,7 +731,7 @@ def pub_get_character_estats(nick: str, user: str, hand: str, chan: str, text: s
         stats = get_chararacter_base_stats(token, first_name, last_name)
         putmsg(chan, format_base_stats_irc(stats))
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player statistics.")
 
@@ -756,14 +757,14 @@ def pub_compare_players(nick: str, user: str, handle: str, chan: str, text: str,
 
         putlog(f"Player Comparison - <{nick}> on {chan} - Comparing {name1} and {name2}")
 
-        player1_data = get_character_data(token, first_name1, last_name1)
-        player2_data = get_character_data(token, first_name2, last_name2)
+        player1_data = get_character_summary(token, first_name1, last_name1)
+        player2_data = get_character_summary(token, first_name2, last_name2)
 
         #test print data player 1
         putmsg(chan, format_player_compare_irc(player1_data, player2_data))
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching player data.")
 
@@ -773,7 +774,7 @@ def pub_get_forever_realm_status(nick: str, user: str, handle: str, chan: str, t
     try:
         args_split = text.strip().split()
         if len(args_split) > 1:
-            putmsg(chan, "Usage: !forever [region] (e.g., !forever or !forever eu)")
+            putmsg(chan, "Usage: !status [region] (e.g., !forever or !forever eu)")
             return
 
         region = args_split[0].lower() if args_split else "us"
@@ -790,7 +791,7 @@ def pub_get_forever_realm_status(nick: str, user: str, handle: str, chan: str, t
         putmsg(chan, f"[{info['version']} - {region.upper()}] {info['irc_summary']}")
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred fetching WoW Forever status.")
 
@@ -801,9 +802,40 @@ def pub_sunken_temple_order(nick: str, user: str, handle:str, chan: str, text: s
         putmsg(chan, f"Sunken Temple Statue Order: {SUNKEN_TEMPLE_ORDER}")
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putmsg(chan, "An error occurred.")
+
+
+def pub_inspect_character(nick:str, user: str, handle: str, chan: str, text:str,
+                          **kwargs):
+    arguments = text.strip().split()
+    if len(arguments) != 2:
+        putmsg(chan, f"Usage: !inspect <first_name> <last_name>")
+        return
+
+    # Map arguments to first and last name variables
+    first_name, last_name = arguments
+    token = get_valid_blizzard_token()
+
+    putlog(f"[{VERSION.upper()}] Inspect Character - <{nick}> on {chan} - {first_name.capitalize()} {last_name.capitalize()}")
+
+    summary = get_character_summary(token, first_name, last_name)
+    equipment = get_character_equipment(token, first_name, last_name)
+    estats = get_chararacter_base_stats(token, first_name, last_name, True)
+
+    try:
+        putmsg(nick, f"Inspecting {first_name} {last_name}")
+        putmsg(nick, format_character_summary_irc(summary))
+        putmsg(nick, format_character_equipment_irc(equipment))
+        putmsg(nick, format_base_stats_irc(estats))
+
+    except Exception as e:
+        putlog(f"forever.py Script Error:{e}")
+        putlog(traceback.format_exc())
+        putmsg(chan, "An error has occurred.")
+
+    
 """
 ***----------------------------------------------------------------------------
 *** DCC BIND FUNCTIONS
@@ -816,7 +848,7 @@ def dcc_token_debug(handle: str, idx: str, text: str,
         putdcc(idx, f"Token: {get_valid_blizzard_token()}")
 
     except Exception as e:
-        putlog(f"wow.py Script Error:{e}")
+        putlog(f"{SCRIPT_NAME} Script Error:{e}")
         putlog(traceback.format_exc())
         putdcc(idx, "An error has occurred.")
 
@@ -858,7 +890,7 @@ def format_character_equipment_irc(data: dict) -> list[str]:
 
     return lines
 
-def format_character_info_irc(info: dict) -> str:
+def format_character_summary_irc(info: dict) -> str:
     if not info or "error" in info:
         return "Error: Invalid character data."
 
@@ -982,6 +1014,7 @@ WOW_BINDS.append(bind("pub", "-", "!stats", pub_get_character_estats))
 WOW_BINDS.append(bind("pub", "-", "!compare", pub_compare_players))
 WOW_BINDS.append(bind("pub", "-", "!status", pub_get_forever_realm_status))
 WOW_BINDS.append(bind("pub", "-", "!st", pub_sunken_temple_order))
+WOW_BINDS.append(bind("pub", "-", "!inspect", pub_inspect_character))
 
 WOW_BINDS.append(bind("dcc", "-", "token", dcc_token_debug))
 
