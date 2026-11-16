@@ -146,7 +146,7 @@ def get_xp_progress(level: int, current_xp: int) -> str:
         return "Unknown"
 
     pct = math.ceil((current_xp / needed_xp) * 100)
-    return f"{pct:.1f}%"
+    return f"{pct:.1f}"
 
 
 """
@@ -862,7 +862,7 @@ def format_character_info_irc(info: dict) -> str:
     if not info or "error" in info:
         return "Error: Invalid character data."
 
-    return f"{info['name']} ({info['gender']}) Lvl {info['level']} ({info['xp_progress_pct']}) {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
+    return f"{info['name']} ({info['gender']}) Lvl {info['level']} ({info['xp_progress_pct']}%) {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
 
 def format_creature_search_irc(data: dict) ->str:
     if not data or "error" in data:
