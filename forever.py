@@ -15,10 +15,6 @@ import math
 from eggdrop import bind
 from eggdrop.tcl import putmsg, putlog, putdcc
 
-
-
-
-
 # Attempt to import client and secret via .env
 try:
     from dotenv import load_dotenv
@@ -28,9 +24,10 @@ except ImportError:
 
 _TOKEN_CACHE = {"access_token": None, "expires_at": 0}
 MAX_LEVEL = 60
+
+# I hope I never have to update these
 VERSION = "forever"
 SCRIPT_NAME = "forever.py"
-
 FOREVER_XP_TABLE = {
     1: 400, 2: 900, 3: 1400, 4: 2100, 5: 2800, 6: 3600, 7: 4500, 8: 5400, 9: 6500, 10: 7600,
     11: 8800, 12: 10100, 13: 11400, 14: 12900, 15: 14400, 16: 16000, 17: 17700, 18: 19400, 19: 21300, 20: 23200,
@@ -39,7 +36,7 @@ FOREVER_XP_TABLE = {
     41: 95800, 42: 101000, 43: 106300, 44: 111800, 45: 117500, 46: 123200, 47: 129100, 48: 135100, 49: 141200, 50: 147500,
     51: 153900, 52: 160400, 53: 167100, 54: 173900, 55: 180800, 56: 187900, 57: 195000, 58: 202300, 59: 209800
 }
-
+MAX_LEVEL = 60
 
 
 """
@@ -99,6 +96,12 @@ def get_valid_blizzard_token() -> str:
         return token
 
 
+"""
+***----------------------------------------------------------------------------
+*** HELPER / UTILITY FUNCTIONS
+***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+"""
+
 def to_wowhead_version(version: str) -> str:
     if version == "tbc":
         return "tbc"
@@ -136,7 +139,6 @@ def format_slug(name: str) -> str:
     return urllib.parse.quote(cleaned)
 
 def get_xp_progress(level: int, current_xp: int) -> str:
-    
 
     if level >= MAX_LEVEL:
         return "Max Level"
@@ -148,6 +150,10 @@ def get_xp_progress(level: int, current_xp: int) -> str:
 
     pct = math.ceil((current_xp / needed_xp) * 100)
     return f"{pct:.1f}"
+
+def putlines_msg(recipient: str, lines: list[str]):
+    for line in lines:
+        putmsg(recipient, line)
 
 
 """
@@ -174,7 +180,8 @@ def get_character_summary(access_token: str, first_name: str, last_name: str,
         with urllib.request.urlopen(req) as response:
             data =json.loads(response.read().decode())
 
-            name = data.get("name", char_name)
+            name = data.get("name", first_name)
+            surname = data.get("surname", last_name)
             level = data.get("level", 0)
             race = data.get("race", {}).get("name", "Unknown Race")
             cls = data.get("character_class", {}).get("name", "Unknown Class")
@@ -192,7 +199,8 @@ def get_character_summary(access_token: str, first_name: str, last_name: str,
                     guild_info = f" | Guild: <{guild_name}>"
 
             return {
-                "name": name,
+                "first_name": name.capitalize(),
+                "last_name": surname.capitalize(),
                 "level": level,
                 "race": race,
                 "class": cls,
@@ -825,9 +833,12 @@ def pub_inspect_character(nick:str, user: str, handle: str, chan: str, text:str,
     estats = get_chararacter_base_stats(token, first_name, last_name, True)
 
     try:
-        putmsg(nick, f"Inspecting {first_name} {last_name}")
+        putmsg(nick, f"=====  Inspecting {first_name} {last_name}  =====")
         putmsg(nick, format_character_summary_irc(summary))
-        putmsg(nick, format_character_equipment_irc(equipment))
+        # for line in format_character_equipment_irc(equipment):
+        #     putmsg(nick, line)
+        putlines_msg(nick, format_character_equipment_irc(equipment))
+        
         putmsg(nick, format_base_stats_irc(estats))
 
     except Exception as e:
@@ -894,7 +905,7 @@ def format_character_summary_irc(info: dict) -> str:
     if not info or "error" in info:
         return "Error: Invalid character data."
 
-    return f"{info['name']} ({info['gender']}) Lvl {info['level']} ({info['xp_progress_pct']}%) {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
+    return f"{info['first_name']} {info['last_name']} ({info['gender']}) Lvl {info['level']} ({info['xp_progress_pct']}%) {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
 
 def format_creature_search_irc(data: dict) ->str:
     if not data or "error" in data:
@@ -945,7 +956,7 @@ def format_base_stats_irc(data: dict) -> str:
         return "Error: Invalid data."
 
     prefix = "" if data.get("effective") else " Base"
-    return f"[{VERSION.upper()}] - {data['name']}{prefix} Stats: Str: {data['strength']} | Agi: {data['agility']} | Sta: {data['stamina']} | Int: {data['intellect']} | Spt: {data['spirit']} | Arm: {data['armor']}"
+    return f"Strength: {data['strength']} | Agility: {data['agility']} | Stamina: {data['stamina']} | Intellect: {data['intellect']} | Spirit: {data['spirit']} | Armor: {data['armor']}"
 
 
 def format_player_compare_summary(player: dict):
