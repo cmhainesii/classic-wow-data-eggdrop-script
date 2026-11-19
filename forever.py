@@ -167,7 +167,7 @@ def get_character_summary(access_token: str, first_name: str, last_name: str,
     
     
     
-    char_name = f"{format_slug(first_name)}-{format_slug(last_name)}"
+    char_name = f"{format_slug(f"{first_name} {last_name}")}"
     namespace = f"profile-{VERSION}-{region}"
 
     url = f"https://{region}.api.blizzard.com/profile/wow/character/{char_name}?namespace={namespace}&locale={locale}"
@@ -190,6 +190,7 @@ def get_character_summary(access_token: str, first_name: str, last_name: str,
             ilvl = data.get("equipped_item_level", 0)
             gender = data.get("gender", {}).get("name", "Unknown Gender")
             xp_progress_pct = get_xp_progress(level, data.get("experience", 0))
+            ruleset = data.get("ruleset", {}).get("name", "Unknown Ruleset")
 
             # Guild is omitted from JSON if player is unguilded
             guild_info = ""
@@ -209,7 +210,8 @@ def get_character_summary(access_token: str, first_name: str, last_name: str,
                 "gender": gender,
                 "guild": guild_info,
                 "version": "forever",
-                "xp_progress_pct": xp_progress_pct
+                "xp_progress_pct": xp_progress_pct,
+                "ruleset": ruleset
             }
     except urllib.error.HTTPError as e:
         if e.code == 404:
@@ -591,7 +593,7 @@ def pub_get_character_summary(nick: str, user: str, hand: str, chan: str, text: 
 def pub_search_creatures(nick: str, user: str, hand: str, chan: str, text: str,
                        **kwargs):
     try:
-        creature_name = format_slug(text)
+        creature_name = text.strip()
         
         if not creature_name:
             putmsg(chan, "Usage: !csearch <creature name>")
@@ -905,7 +907,7 @@ def format_character_summary_irc(info: dict) -> str:
     if not info or "error" in info:
         return "Error: Invalid character data."
 
-    return f"{info['first_name']} {info['last_name']} ({info['gender']}) Lvl {info['level']} ({info['xp_progress_pct']}%) {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
+    return f"({info["ruleset"].capitalize()}) {info['first_name']} {info['last_name']} - {info['gender']} - Lvl {info['level']} ({info['xp_progress_pct']}%) {info['race']} {info['class']} | Faction: {info['faction']} | iLvl: {info['ilvl']}{info['guild']}"
 
 def format_creature_search_irc(data: dict) ->str:
     if not data or "error" in data:
