@@ -12,6 +12,8 @@ import traceback
 import base64
 import math
 
+from more_itertools import last
+
 from eggdrop import bind
 from eggdrop.tcl import putmsg, putlog, putdcc
 
@@ -162,6 +164,49 @@ def putlines_msg(recipient: str, lines: list[str]):
 ***>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 """
 
+
+def get_character_specializations(access_token: str, first_name: str, last_name: str, 
+                                  region="us", locale="en_US") -> list[str]:
+    
+    char_name = format_slug(f"{first_name} {last_name}")
+    namespace = f"profile-{VERSION}-{region}"
+
+    url = f"https://{region}.api.blizzard.com/profile/wow/character/{char_name}/specializations?namespace={namespace}&locale={locale}"
+
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {access_token}")
+
+    try:
+        with urllib.request.urlopen(req) as response:
+            data = json.loads(response.read().decode())
+
+
+            spec_groups = data.get("specialization_groups", [])
+            active_group = next((g for g in spec_groups if g.get("is_active")), None)
+
+            if not active_group:
+                return []
+
+            output = []
+
+            # Loop through talent trees
+            for tree in active_group.get("specializations"):
+                tree_name = tree.get("specialization", {}).get("name")
+                output.append(f"{tree_name} Tree:")
+
+                talents = tree.get("talents", [])
+
+                for t in talents:
+                    output.append(f"{t.get("talent", {}).get("name", "Unknown")} Rank {t.get("talent_rank", 0)}")
+
+            return output
+    except:
+        return []
+
+            
+                
+            
+
 def get_character_summary(access_token: str, first_name: str, last_name: str,
                        region="us", locale="en_US") -> dict :
     
@@ -185,12 +230,12 @@ def get_character_summary(access_token: str, first_name: str, last_name: str,
             level = data.get("level", 0)
             race = data.get("race", {}).get("name", "Unknown Race")
             cls = data.get("character_class", {}).get("name", "Unknown Class")
-            #realm_name = data.get("realm", {}).get("name", realm.capitalize())
+            ruleset = data.get("ruleset", {}).get("name", "Unknown Ruleset")
             faction = data.get("faction", {}).get("name", "Unknown Faction")
             ilvl = data.get("equipped_item_level", 0)
             gender = data.get("gender", {}).get("name", "Unknown Gender")
             xp_progress_pct = get_xp_progress(level, data.get("experience", 0))
-            ruleset = data.get("ruleset", {}).get("name", "Unknown Ruleset")
+            
 
             # Guild is omitted from JSON if player is unguilded
             guild_info = ""
@@ -848,6 +893,37 @@ def pub_inspect_character(nick:str, user: str, handle: str, chan: str, text:str,
         putlog(traceback.format_exc())
         putmsg(chan, "An error has occurred.")
 
+
+def pub_character_spec(nick: str, user: str, handle: str, chan: str, text: str,
+                        **kwargs):
+    arguments = text.strip().split()
+
+    if len(arguments) != 2:
+        putmsg(chan, "Usage: !spec <first_name> <last_name>")
+        return
+
+    first_name, last_name = arguments
+    token = get_valid_blizzard_token()
+
+    spec = get_character_specializations(token, first_name, last_name)
+
+    if not spec:
+        return
+
+    per_line = 3
+
+    putmsg(chan, spec[0])
+
+    for i in range(1, len(spec), per_line):
+        chunk = spec[i : i + per_line]
+        putmsg(chan, " | ".join(str(item) for item in chunk))
+
+    
+
+    
+
+
+
     
 """
 ***----------------------------------------------------------------------------
@@ -1001,6 +1077,9 @@ def format_player_compare_irc(player1: dict, player2: dict) -> str:
     return f"[{VERSION.upper()}] {p1_summary} vs {p2_summary} | Delta ({name1} vs {name2}): {diff_level:+d} Lvl, {diff_ilvl:+d} iLvl"
 
 
+
+
+
 """
 ***----------------------------------------------------------------------------
 *** Bot Function Bindings Machine
@@ -1028,6 +1107,7 @@ WOW_BINDS.append(bind("pub", "-", "!compare", pub_compare_players))
 WOW_BINDS.append(bind("pub", "-", "!status", pub_get_forever_realm_status))
 WOW_BINDS.append(bind("pub", "-", "!st", pub_sunken_temple_order))
 WOW_BINDS.append(bind("pub", "-", "!inspect", pub_inspect_character))
+WOW_BINDS.append(bind("pub", "-", "!spec", pub_character_spec))
 
 WOW_BINDS.append(bind("dcc", "-", "token", dcc_token_debug))
 
