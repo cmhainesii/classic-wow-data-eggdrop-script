@@ -418,13 +418,6 @@ def get_item_data(access_token: str, item_id: str, region="us", locale="en_US") 
                 "wowhead_url": wowhead_url,
             }
 
-            # return(
-            #     f"Item Name: {name} (ID: {id}) | "
-            #     f"Level: {level} | Req. Level: {req_level} | "
-            #     f"Type: {item_class} ({item_subclass}) | "
-            #     f"Vendor: {purchase_price}"
-            # )
-
 
     except urllib.error.HTTPError as e:
         if e.code == 404:
@@ -878,6 +871,7 @@ def pub_inspect_character(nick:str, user: str, handle: str, chan: str, text:str,
     summary = get_character_summary(token, first_name, last_name)
     equipment = get_character_equipment(token, first_name, last_name)
     estats = get_chararacter_base_stats(token, first_name, last_name, True)
+    spec = get_character_specializations(token, first_name, last_name)
 
     try:
         putmsg(nick, f"=====  Inspecting {first_name} {last_name}  =====")
@@ -918,13 +912,7 @@ def pub_character_spec(nick: str, user: str, handle: str, chan: str, text: str,
         chunk = spec[i : i + per_line]
         putmsg(chan, " | ".join(str(item) for item in chunk))
 
-    
 
-    
-
-
-
-    
 """
 ***----------------------------------------------------------------------------
 *** DCC BIND FUNCTIONS
